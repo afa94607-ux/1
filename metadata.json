@@ -1,0 +1,6 @@
+{
+  "name": "ឆ្នោត 12 - Cambodian Platform Lottery",
+  "description": "វេទិកាឆ្នោតខ្មែរ 12 សត្វ (Cambodian 12-Animal Gold Ingot Lottery) platform with live 70s countdown, betting board, 12 animals, streak roads, audio, and win/loss records.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
