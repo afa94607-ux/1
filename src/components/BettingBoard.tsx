@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimalArtwork } from './AnimalIllustrations';
 import { ANIMALS_DATA, BetCategory, DrawResult } from '../types';
+import { CountdownSyncSegment } from '../utils/countdownAudioSync';
 
 interface BettingBoardProps {
   countdown: number;
@@ -11,7 +12,11 @@ interface BettingBoardProps {
   selectedChip: number;
   latestResult: DrawResult | null;
   isRevealing: boolean;
+  revealStep?: number;
   onRefreshRound?: () => void;
+  audioSyncSegment?: CountdownSyncSegment | null;
+  isBettingClosed?: boolean;
+  onBlockedAttempt?: () => void;
 }
 
 export const BettingBoard: React.FC<BettingBoardProps> = ({
@@ -23,7 +28,11 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
   selectedChip,
   latestResult,
   isRevealing,
+  revealStep = 0,
   onRefreshRound,
+  audioSyncSegment,
+  isBettingClosed = false,
+  onBlockedAttempt,
 }) => {
   // Live clock display in Cambodian / local time
   const [liveTime, setLiveTime] = React.useState<string>('16:21:08');
@@ -41,25 +50,58 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Format currency
+  // Format currency with standard Khmer Riel symbol ៛
   const formatBetAmount = (amt: number) => {
-    if (amt >= 1000000) return `${(amt / 1000000).toFixed(1)}M៛`;
-    if (amt >= 1000) return `${amt / 1000}K៛`;
-    return `${amt}៛`;
+    return `${amt.toLocaleString()}៛`;
+  };
+
+  const handleAttemptBet = (category: BetCategory, odds: number, label: string) => {
+    if (isBettingClosed) {
+      onBlockedAttempt?.();
+      return;
+    }
+    onPlaceBet(category, odds, label);
   };
 
   return (
     <div className="flex-1 flex flex-col bg-[#ffffff] select-none">
       {/* Top Header Bar */}
       <div className="flex h-12 w-full shadow-sm">
-        {/* Big Red Countdown Block */}
-        <div
-          className={`w-24 sm:w-28 flex items-center justify-center font-black text-2xl sm:text-3xl text-white tracking-wider transition-colors ${
-            countdown <= 5 && countdown > 0 ? 'bg-red-700 animate-pulse' : 'bg-[#c51d24]'
-          }`}
-        >
-          {countdown}
-        </div>
+        {/* Countdown / Audio Figure Sync Block */}
+        {audioSyncSegment ? (
+          <div className="w-24 sm:w-28 flex flex-col items-center justify-center font-black text-white bg-gradient-to-b from-red-600 via-rose-700 to-red-800 border-r-2 border-yellow-300 p-0.5 animate-pulse">
+            <div className="text-xl sm:text-2xl md:text-3xl font-black text-yellow-300 drop-shadow leading-none">
+              {audioSyncSegment.number === 0 ? '០' : audioSyncSegment.number}
+            </div>
+            <div className="text-[10px] sm:text-xs font-bold text-white tracking-tight drop-shadow truncate max-w-full">
+              {audioSyncSegment.khmerWord}
+            </div>
+          </div>
+        ) : isRevealing ? (
+          <div className="w-24 sm:w-28 flex flex-col items-center justify-center font-black text-white bg-[#c51d24] transition-all">
+            {revealStep >= 12 && latestResult ? (
+              <div className="flex flex-col items-center justify-center leading-tight">
+                <span className="text-[10px] text-yellow-300 font-bold uppercase tracking-wider">ឈ្នះ 👑</span>
+                <span className="text-sm sm:text-base font-black text-yellow-200 truncate px-1">
+                  {latestResult.number}. {latestResult.animal}
+                </span>
+              </div>
+            ) : (
+              <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-wider animate-pulse">
+                OPEN
+              </span>
+            )}
+          </div>
+        ) : isBettingClosed ? (
+          <div className="w-24 sm:w-28 flex flex-col items-center justify-center font-black text-white bg-red-700 animate-pulse">
+            <div className="text-lg sm:text-xl leading-none">0:{String(countdown).padStart(2, '0')}</div>
+            <div className="text-[9px] text-yellow-200 uppercase font-bold mt-0.5">បិទភ្នាល់</div>
+          </div>
+        ) : (
+          <div className="w-24 sm:w-28 flex items-center justify-center font-black text-xl sm:text-2xl md:text-3xl text-white tracking-wider bg-[#c51d24]">
+            {`${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}`}
+          </div>
+        )}
 
         {/* Center / Right Navy Header */}
         <div className="flex-1 bg-[#23497d] flex items-center justify-between px-3 text-white text-xs sm:text-sm font-semibold">
@@ -76,6 +118,17 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
             <span className="tracking-wide">
               {currentRoundId} {currentRoundTime}
             </span>
+            <button
+              onClick={() => handleAttemptBet('small', 1.95, 'តូច (Small)')}
+              className={`ml-2 px-3 py-1 text-white text-xs sm:text-sm font-black rounded shadow transition-all flex items-center gap-1 ${
+                isBettingClosed
+                  ? 'bg-slate-500 hover:bg-slate-600 cursor-not-allowed opacity-80'
+                  : 'bg-[#16a34a] hover:bg-[#15803d] active:scale-95 cursor-pointer'
+              }`}
+              title={isBettingClosed ? 'បិទការទទួលការភ្នាល់ (Betting Closed)' : 'ចុចដើម្បីភ្នាល់ (Click to place bet)'}
+            >
+              <span>{isBettingClosed ? 'បិទភ្នាល់' : 'ភ្នាល់'}</span>
+            </button>
           </div>
 
           <div className="font-mono text-sm sm:text-base tracking-wider text-slate-100">
@@ -84,6 +137,19 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
         </div>
       </div>
 
+      {/* Prominent Betting Closed Alert Banner */}
+      {isBettingClosed && (
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-600 text-yellow-200 text-xs sm:text-sm font-black py-1.5 px-3 flex items-center justify-center gap-2 border-b border-red-700 shadow-xs animate-pulse">
+          <span className="text-base">🚫</span>
+          <span>បិទការទទួលការភ្នាល់! (Betting Closed - មិនទទួលការភ្នាល់ថ្មីក្នុងអំឡុងពេលរាប់ថយក្រោយឡើយ)</span>
+          {audioSyncSegment && (
+            <span className="ml-2 bg-yellow-400 text-red-900 px-2 py-0.5 rounded-full text-xs font-black shadow-xs">
+              {audioSyncSegment.number}: {audioSyncSegment.khmerWord}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Top Betting Grid: Small/Big, Odd/Even, Colors */}
       <div className="p-1 sm:p-2 bg-[#ffffff]">
         <div className="grid grid-cols-5 gap-1 text-center font-bold">
@@ -91,15 +157,17 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
           <div className="col-span-2 grid grid-cols-2 grid-rows-2 gap-1 h-28 sm:h-32">
             {/* តូច (Small / 1-6) */}
             <button
-              onClick={() => onPlaceBet('small', 1.95, 'តូច (Small)')}
-              className="relative bg-[#29b6f6] hover:bg-[#0288d1] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group"
+              onClick={() => handleAttemptBet('small', 1.95, 'តូច (Small)')}
+              className={`relative bg-[#29b6f6] hover:bg-[#0288d1] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group ${
+                isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+              }`}
             >
               <span className="text-lg sm:text-xl font-black drop-shadow-sm">តូច</span>
               <span className="mt-1 px-2 py-0.5 bg-white text-[#0288d1] text-xs font-bold rounded-full shadow-inner">
                 1.95
               </span>
               {activeBets['small'] && (
-                <div className="absolute top-1 right-1 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow animate-scaleIn">
+                <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-10 whitespace-nowrap">
                   {formatBetAmount(activeBets['small'])}
                 </div>
               )}
@@ -107,15 +175,17 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
 
             {/* ធំ (Big / 7-12) */}
             <button
-              onClick={() => onPlaceBet('big', 1.95, 'ធំ (Big)')}
-              className="relative bg-[#ec4899] hover:bg-[#db2777] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group"
+              onClick={() => handleAttemptBet('big', 1.95, 'ធំ (Big)')}
+              className={`relative bg-[#ec4899] hover:bg-[#db2777] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group ${
+                isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+              }`}
             >
               <span className="text-lg sm:text-xl font-black drop-shadow-sm">ធំ</span>
               <span className="mt-1 px-2 py-0.5 bg-white text-[#db2777] text-xs font-bold rounded-full shadow-inner">
                 1.95
               </span>
               {activeBets['big'] && (
-                <div className="absolute top-1 right-1 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow animate-scaleIn">
+                <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-10 whitespace-nowrap">
                   {formatBetAmount(activeBets['big'])}
                 </div>
               )}
@@ -123,15 +193,17 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
 
             {/* សេស (Odd) */}
             <button
-              onClick={() => onPlaceBet('odd', 1.95, 'សេស (Odd)')}
-              className="relative bg-[#f97316] hover:bg-[#ea580c] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group"
+              onClick={() => handleAttemptBet('odd', 1.95, 'សេស (Odd)')}
+              className={`relative bg-[#f97316] hover:bg-[#ea580c] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group ${
+                isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+              }`}
             >
               <span className="text-lg sm:text-xl font-black drop-shadow-sm">សេស</span>
               <span className="mt-1 px-2 py-0.5 bg-white text-[#ea580c] text-xs font-bold rounded-full shadow-inner">
                 1.95
               </span>
               {activeBets['odd'] && (
-                <div className="absolute top-1 right-1 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow animate-scaleIn">
+                <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-10 whitespace-nowrap">
                   {formatBetAmount(activeBets['odd'])}
                 </div>
               )}
@@ -139,15 +211,17 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
 
             {/* គូ (Even) */}
             <button
-              onClick={() => onPlaceBet('even', 1.95, 'គូ (Even)')}
-              className="relative bg-[#fb923c] hover:bg-[#f97316] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group"
+              onClick={() => handleAttemptBet('even', 1.95, 'គូ (Even)')}
+              className={`relative bg-[#fb923c] hover:bg-[#f97316] active:scale-[0.98] text-white flex flex-col items-center justify-center rounded p-1 transition-all shadow-sm group ${
+                isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+              }`}
             >
               <span className="text-lg sm:text-xl font-black drop-shadow-sm">គូ</span>
               <span className="mt-1 px-2 py-0.5 bg-white text-[#ea580c] text-xs font-bold rounded-full shadow-inner">
                 1.95
               </span>
               {activeBets['even'] && (
-                <div className="absolute top-1 right-1 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow animate-scaleIn">
+                <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-10 whitespace-nowrap">
                   {formatBetAmount(activeBets['even'])}
                 </div>
               )}
@@ -156,8 +230,10 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
 
           {/* Col 3: ក្រហម (Red) */}
           <button
-            onClick={() => onPlaceBet('color_red', 2.95, 'ក្រហម (Red)')}
-            className="relative bg-[#ef4444] hover:bg-[#dc2626] active:scale-[0.98] text-white flex flex-col items-center justify-between rounded p-2 transition-all shadow-sm h-28 sm:h-32"
+            onClick={() => handleAttemptBet('color_red', 2.95, 'ក្រហម (Red)')}
+            className={`relative bg-[#ef4444] hover:bg-[#dc2626] active:scale-[0.98] text-white flex flex-col items-center justify-between rounded p-2 transition-all shadow-sm h-28 sm:h-32 ${
+              isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+            }`}
           >
             <div>
               <div className="text-base sm:text-lg font-black drop-shadow-sm">ក្រហម</div>
@@ -171,7 +247,7 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
               </span>
             </div>
             {activeBets['color_red'] && (
-              <div className="absolute top-1 right-1 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow animate-scaleIn">
+              <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-10 whitespace-nowrap">
                 {formatBetAmount(activeBets['color_red'])}
               </div>
             )}
@@ -179,8 +255,10 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
 
           {/* Col 4: បៃតង (Green) */}
           <button
-            onClick={() => onPlaceBet('color_green', 2.95, 'បៃតង (Green)')}
-            className="relative bg-[#22c55e] hover:bg-[#16a34a] active:scale-[0.98] text-white flex flex-col items-center justify-between rounded p-2 transition-all shadow-sm h-28 sm:h-32"
+            onClick={() => handleAttemptBet('color_green', 2.95, 'បៃតង (Green)')}
+            className={`relative bg-[#22c55e] hover:bg-[#16a34a] active:scale-[0.98] text-white flex flex-col items-center justify-between rounded p-2 transition-all shadow-sm h-28 sm:h-32 ${
+              isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+            }`}
           >
             <div>
               <div className="text-base sm:text-lg font-black drop-shadow-sm">បៃតង</div>
@@ -194,7 +272,7 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
               </span>
             </div>
             {activeBets['color_green'] && (
-              <div className="absolute top-1 right-1 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow animate-scaleIn">
+              <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-10 whitespace-nowrap">
                 {formatBetAmount(activeBets['color_green'])}
               </div>
             )}
@@ -202,8 +280,10 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
 
           {/* Col 5: ខៀវ (Blue) */}
           <button
-            onClick={() => onPlaceBet('color_blue', 2.95, 'ខៀវ (Blue)')}
-            className="relative bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.98] text-white flex flex-col items-center justify-between rounded p-2 transition-all shadow-sm h-28 sm:h-32"
+            onClick={() => handleAttemptBet('color_blue', 2.95, 'ខៀវ (Blue)')}
+            className={`relative bg-[#2563eb] hover:bg-[#1d4ed8] active:scale-[0.98] text-white flex flex-col items-center justify-between rounded p-2 transition-all shadow-sm h-28 sm:h-32 ${
+              isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+            }`}
           >
             <div>
               <div className="text-base sm:text-lg font-black drop-shadow-sm">ខៀវ</div>
@@ -217,7 +297,7 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
               </span>
             </div>
             {activeBets['color_blue'] && (
-              <div className="absolute top-1 right-1 bg-yellow-400 text-slate-900 border border-yellow-500 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow animate-scaleIn">
+              <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-10 whitespace-nowrap">
                 {formatBetAmount(activeBets['color_blue'])}
               </div>
             )}
@@ -247,11 +327,13 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
               <div
                 key={num}
                 onClick={() =>
-                  onPlaceBet(betKey as BetCategory, animal.odds, `${num}. ${animal.khmerName}`)
+                  handleAttemptBet(betKey as BetCategory, animal.odds, `${num}. ${animal.khmerName}`)
                 }
                 className={`relative flex flex-col justify-between ${
-                  num === 1 ? 'p-0 overflow-hidden' : 'p-1'
-                } rounded-md border cursor-pointer transition-all duration-150 select-none bg-[#fefce8] hover:bg-[#fef9c3] active:scale-[0.97] aspect-square ${
+                  num >= 1 && num <= 12 ? 'p-0 overflow-hidden' : 'p-1'
+                } rounded-md border transition-all duration-150 select-none bg-[#fefce8] hover:bg-[#fef9c3] active:scale-[0.97] aspect-square w-full ${
+                  isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+                } ${
                   isWinner
                     ? 'ring-4 ring-yellow-400 bg-yellow-100 border-yellow-500 shadow-xl animate-bounce z-20'
                     : 'border-[#cbd5e1] hover:border-blue-400 shadow-xs'
@@ -261,6 +343,72 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
                   <img
                     src="/assets/aistudio/image_56958bf8.png"
                     alt="1. ជូត"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 2 ? (
+                  <img
+                    src="/assets/aistudio/image_db618d8c.png"
+                    alt="2. ឆ្លូវ"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 3 ? (
+                  <img
+                    src="/assets/aistudio/image_f12e60ed.png"
+                    alt="3. ខាល"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 4 ? (
+                  <img
+                    src="/assets/aistudio/image_da2dada5.png"
+                    alt="4. ថោះ"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 5 ? (
+                  <img
+                    src="/assets/aistudio/image_d13f2d73.png"
+                    alt="5. រោង"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 6 ? (
+                  <img
+                    src="/assets/aistudio/image_200a760b.png"
+                    alt="6. ម្សាញ់"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 7 ? (
+                  <img
+                    src="/assets/aistudio/image_50856913.png"
+                    alt="7. មមី"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 8 ? (
+                  <img
+                    src="/assets/aistudio/image_c0557994.png"
+                    alt="8. មមែ"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 9 ? (
+                  <img
+                    src="/assets/aistudio/image_799af351.png"
+                    alt="9. វក"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 10 ? (
+                  <img
+                    src="/assets/aistudio/image_a48a72a3.png"
+                    alt="10. រកា"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 11 ? (
+                  <img
+                    src="/assets/aistudio/image_512554a0.png"
+                    alt="11. ច"
+                    className="w-full h-full object-cover rounded-md pointer-events-none"
+                  />
+                ) : num === 12 ? (
+                  <img
+                    src="/assets/aistudio/image_64be13af.png"
+                    alt="12. កុរ"
                     className="w-full h-full object-cover rounded-md pointer-events-none"
                   />
                 ) : (
@@ -291,7 +439,7 @@ export const BettingBoard: React.FC<BettingBoardProps> = ({
 
                 {/* Active Bet Chip on this animal */}
                 {betAmount > 0 && (
-                  <div className="absolute top-1 right-1 bg-amber-400 text-slate-900 border border-amber-600 rounded-full text-[10px] px-1.5 py-0.2 font-black shadow-md animate-scaleIn z-10">
+                  <div className="absolute top-1 right-1 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-300 text-slate-950 border border-amber-600 rounded-full text-[10px] sm:text-[11px] px-2 py-0.5 font-black shadow-md animate-scaleIn z-20 whitespace-nowrap">
                     {formatBetAmount(betAmount)}
                   </div>
                 )}

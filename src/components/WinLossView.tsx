@@ -1,6 +1,6 @@
 import React from 'react';
 import { BetHistoryRecord } from '../types';
-import { TrendingUp, TrendingDown, Award, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award } from 'lucide-react';
 
 interface WinLossViewProps {
   records: BetHistoryRecord[];
@@ -38,8 +38,8 @@ export const WinLossView: React.FC<WinLossViewProps> = ({ records, onBackToGame 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 rounded-full bg-blue-50 text-blue-600">
-            <DollarSign className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 font-black text-lg flex items-center justify-center">
+            ៛
           </div>
           <div>
             <div className="text-[11px] text-slate-500 font-medium">ទឹកប្រាក់ភ្នាល់សរុប</div>
@@ -107,6 +107,7 @@ export const WinLossView: React.FC<WinLossViewProps> = ({ records, onBackToGame 
                 <th className="py-2.5 px-3">លទ្ធផលចេញ (Drawn)</th>
                 <th className="py-2.5 px-3">ជម្រើសភ្នាល់ (Placed Bets)</th>
                 <th className="py-2.5 px-3 text-right">ទឹកប្រាក់ភ្នាល់ (Stake)</th>
+                <th className="py-2.5 px-3 text-right">ទឹកប្រាក់អាចឈ្នះ (Potential)</th>
                 <th className="py-2.5 px-3 text-right">ទឹកប្រាក់ទូទាត់ (Payout)</th>
                 <th className="py-2.5 px-3 text-right">ចំណេញ/ខាត (P/L)</th>
                 <th className="py-2.5 px-3 text-center">ស្ថានភាព (Status)</th>
@@ -115,19 +116,23 @@ export const WinLossView: React.FC<WinLossViewProps> = ({ records, onBackToGame 
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {records.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 italic">
+                  <td colSpan={9} className="py-8 text-center text-slate-400 italic">
                     មិនទាន់មានទិន្នន័យភ្នាល់នៅក្នុងប្រព័ន្ធនៅឡើយទេ
                   </td>
                 </tr>
               ) : (
                 records.map((rec) => {
                   const profit = rec.totalPayout - rec.totalStake;
+                  const potentialWin =
+                    rec.totalPotentialPayout ||
+                    (rec.bets[0]?.potentialWin ?? Math.round(rec.totalStake * (rec.bets[0]?.odds || 1.95)));
+
                   return (
                     <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-2.5 px-3 font-bold text-blue-700">{rec.roundId}</td>
                       <td className="py-2.5 px-3 text-slate-500">{rec.time}</td>
                       <td className="py-2.5 px-3 font-bold text-slate-900">
-                        {rec.resultNumber ? `លេខ ${rec.resultNumber}` : '-'}
+                        {rec.resultNumber ? `លេខ ${rec.resultNumber}` : rec.status === 'pending' ? 'រង់ចាំចេញ...' : '-'}
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="flex flex-wrap gap-1">
@@ -137,28 +142,37 @@ export const WinLossView: React.FC<WinLossViewProps> = ({ records, onBackToGame 
                               className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                 b.won
                                   ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-300'
+                                  : rec.status === 'pending'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                   : 'bg-slate-100 text-slate-700 border border-slate-200'
                               }`}
                             >
-                              {b.label}: {formatKHR(b.amount)}
+                              {b.label}: {formatKHR(b.amount)} (x{b.odds})
                             </span>
                           ))}
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-right font-medium">{formatKHR(rec.totalStake)}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-emerald-700">
+                        {formatKHR(potentialWin)}
+                      </td>
                       <td className="py-2.5 px-3 text-right font-bold text-emerald-600">
-                        {formatKHR(rec.totalPayout)}
+                        {rec.status === 'pending' ? '-' : formatKHR(rec.totalPayout)}
                       </td>
                       <td
                         className={`py-2.5 px-3 text-right font-bold ${
-                          profit > 0
+                          rec.status === 'pending'
+                            ? 'text-amber-600'
+                            : profit > 0
                             ? 'text-green-600'
                             : profit < 0
                             ? 'text-rose-600'
                             : 'text-slate-500'
                         }`}
                       >
-                        {profit > 0
+                        {rec.status === 'pending'
+                          ? 'រង់ចាំ'
+                          : profit > 0
                           ? `+${formatKHR(profit)}`
                           : profit < 0
                           ? `-${formatKHR(Math.abs(profit))}`
@@ -170,15 +184,15 @@ export const WinLossView: React.FC<WinLossViewProps> = ({ records, onBackToGame 
                             rec.status === 'won'
                               ? 'bg-green-100 text-green-700 border border-green-300'
                               : rec.status === 'lost'
-                              ? 'bg-rose-100 text-rose-700 border border-rose-300'
-                              : 'bg-amber-100 text-amber-700 border border-amber-300'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300 font-extrabold tracking-wide'
+                              : 'bg-amber-100 text-amber-700 border border-amber-300 animate-pulse'
                           }`}
                         >
                           {rec.status === 'won'
-                            ? 'ឈ្នះ'
+                            ? 'ឈ្នះ (Won)'
                             : rec.status === 'lost'
-                            ? 'ចាញ់'
-                            : 'កំពុងដំណើរការ'}
+                            ? 'Lost'
+                            : 'កំពុងរង់ចាំ (Pending)'}
                         </span>
                       </td>
                     </tr>

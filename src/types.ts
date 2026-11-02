@@ -65,13 +65,15 @@ export interface BetHistoryRecord {
     label: string;
     amount: number;
     odds: number;
+    potentialWin?: number;
     won: boolean;
     payout: number;
   }[];
   totalStake: number;
+  totalPotentialPayout: number;
   totalPayout: number;
   netProfit: number;
-  resultNumber: number;
+  resultNumber?: number;
   status: 'won' | 'lost' | 'pending';
 }
 

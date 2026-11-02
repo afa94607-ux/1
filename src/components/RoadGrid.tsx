@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { DrawResult } from '../types';
 
 interface RoadGridProps {
@@ -6,124 +6,145 @@ interface RoadGridProps {
 }
 
 export const RoadGrid: React.FC<RoadGridProps> = ({ history }) => {
-  const NUM_COLS = 16;
   const NUM_ROWS = 6;
+  const MIN_COLS = 26;
+  const leftScrollRef = useRef<HTMLDivElement>(null);
+  const rightScrollRef = useRef<HTMLDivElement>(null);
 
-  // Build Big Road (Streak by Big/Small) for "លេខ / តូចធំ"
-  // When result has same SizeGroup (big vs small), stack downwards. When it flips, move to next column.
+  // Build Big/Small Road for "លេខ / គូចធំ"
+  // When result has same SizeGroup (big vs small), stack downwards.
+  // If row reaches 6, continues in next column (or wraps). When size changes, move to next column at row 0.
   const bigSmallRoad = useMemo(() => {
-    // Array of columns, each containing up to NUM_ROWS cells
-    const cols: (DrawResult | null)[][] = Array.from({ length: NUM_COLS }, () =>
-      Array(NUM_ROWS).fill(null)
-    );
+    // Process from oldest to newest
+    const items = [...history].reverse();
 
+    // First pass to determine required columns
     let col = 0;
     let row = 0;
     let lastSize: string | null = null;
 
-    // Process from oldest to newest (up to last 60 results)
-    const items = [...history].reverse();
+    const placements: { col: number; row: number; item: DrawResult }[] = [];
 
     for (const item of items) {
-      if (col >= NUM_COLS) break;
-
       if (lastSize === null) {
-        cols[col][row] = item;
+        placements.push({ col, row, item });
         lastSize = item.size;
       } else if (item.size === lastSize) {
-        if (row + 1 < NUM_ROWS && cols[col][row + 1] === null) {
+        if (row + 1 < NUM_ROWS) {
           row++;
-          cols[col][row] = item;
+          placements.push({ col, row, item });
         } else {
-          // Dragon tail or move right if full
+          // Wrapped column on same streak
           col++;
-          if (col >= NUM_COLS) break;
-          cols[col][row] = item;
+          row = 0;
+          placements.push({ col, row, item });
         }
       } else {
-        // Size flipped! Move to next column, start at row 0
+        // Size flipped
         col++;
         row = 0;
-        if (col >= NUM_COLS) break;
-        cols[col][row] = item;
+        placements.push({ col, row, item });
         lastSize = item.size;
       }
     }
 
-    return cols;
-  }, [history]);
-
-  // Build Streak Road for "ពណ៌ / សេសគូ" (Color / Odd-Even)
-  // Stack downwards on same color or parity
-  const colorParityRoad = useMemo(() => {
-    const cols: (DrawResult | null)[][] = Array.from({ length: NUM_COLS }, () =>
+    const maxCol = Math.max(MIN_COLS, col + 6);
+    const cols: (DrawResult | null)[][] = Array.from({ length: maxCol }, () =>
       Array(NUM_ROWS).fill(null)
     );
 
-    let col = 0;
-    let row = 0;
-    let lastKey: string | null = null;
+    for (const p of placements) {
+      if (p.col < maxCol && p.row < NUM_ROWS) {
+        cols[p.col][p.row] = p.item;
+      }
+    }
 
+    return { cols, totalCols: maxCol };
+  }, [history]);
+
+  // Build Color Streak Road for "ពណ៌ / សេសគូ"
+  // Stack downwards on same Color (Red, Green, Blue). Flips column on Color change.
+  // Text inside shows 'ស' (Odd) or 'គ' (Even).
+  const colorParityRoad = useMemo(() => {
     const items = [...history].reverse();
 
+    let col = 0;
+    let row = 0;
+    let lastColor: string | null = null;
+
+    const placements: { col: number; row: number; item: DrawResult }[] = [];
+
     for (const item of items) {
-      if (col >= NUM_COLS) break;
-
-      // Group key: Parity + Color
-      const key = `${item.parity}-${item.color}`;
-
-      if (lastKey === null) {
-        cols[col][row] = item;
-        lastKey = key;
-      } else if (item.parity === items[items.indexOf(item) - 1]?.parity) {
-        if (row + 1 < NUM_ROWS && cols[col][row + 1] === null) {
+      if (lastColor === null) {
+        placements.push({ col, row, item });
+        lastColor = item.color;
+      } else if (item.color === lastColor) {
+        if (row + 1 < NUM_ROWS) {
           row++;
-          cols[col][row] = item;
+          placements.push({ col, row, item });
         } else {
           col++;
-          if (col >= NUM_COLS) break;
-          cols[col][row] = item;
+          row = 0;
+          placements.push({ col, row, item });
         }
       } else {
         col++;
         row = 0;
-        if (col >= NUM_COLS) break;
-        cols[col][row] = item;
-        lastKey = key;
+        placements.push({ col, row, item });
+        lastColor = item.color;
       }
     }
 
-    return cols;
+    const maxCol = Math.max(MIN_COLS, col + 6);
+    const cols: (DrawResult | null)[][] = Array.from({ length: maxCol }, () =>
+      Array(NUM_ROWS).fill(null)
+    );
+
+    for (const p of placements) {
+      if (p.col < maxCol && p.row < NUM_ROWS) {
+        cols[p.col][p.row] = p.item;
+      }
+    }
+
+    return { cols, totalCols: maxCol };
   }, [history]);
 
+  // Sync scroll or smooth scroll on update if needed
+  useEffect(() => {
+    if (leftScrollRef.current && rightScrollRef.current) {
+      // Keep scroll in sync or comfortable
+    }
+  }, [history.length]);
+
   return (
-    <div className="w-full grid grid-cols-1 md:grid-cols-2 border-t-2 border-[#94a3b8] bg-[#f8fafc]">
-      {/* Left: លេខ / តូចធំ (Number / Small-Big Road) */}
-      <div className="border-r border-[#94a3b8] flex flex-col">
+    <div className="w-full grid grid-cols-1 md:grid-cols-2 border-t border-[#8cb7e4] bg-[#ffffff] select-none">
+      {/* Left: លេខ / គូចធំ (Number / Big-Small Road) */}
+      <div className="border-r border-[#8cb7e4] flex flex-col">
         {/* Header */}
-        <div className="bg-[#cbd5e1] text-[#334155] font-bold text-center py-1 text-sm tracking-wider border-b border-[#94a3b8]">
-          លេខ / តូចធំ
+        <div className="bg-[#dae4f0] text-[#334155] font-bold text-center py-2 text-base md:text-lg tracking-wide border-b border-[#8cb7e4]">
+          លេខ / គូចធំ
         </div>
 
-        {/* Matrix Grid */}
-        <div className="overflow-x-auto p-1 bg-white">
-          <div className="inline-grid grid-rows-6 grid-flow-col gap-0 border border-[#cbd5e1] min-w-full">
+        {/* Matrix Grid matching user platform image */}
+        <div ref={leftScrollRef} className="overflow-x-auto p-0 bg-white">
+          <div className="inline-block min-w-full">
             {Array.from({ length: NUM_ROWS }).map((_, rIdx) => (
               <div key={rIdx} className="flex">
-                {Array.from({ length: NUM_COLS }).map((_, cIdx) => {
-                  const item = bigSmallRoad[cIdx]?.[rIdx];
+                {Array.from({ length: bigSmallRoad.totalCols }).map((_, cIdx) => {
+                  const item = bigSmallRoad.cols[cIdx]?.[rIdx];
                   const isBig = item?.size === 'big';
+
                   return (
                     <div
                       key={cIdx}
-                      className="w-7 h-7 sm:w-8 sm:h-8 border-b border-r border-[#e2e8f0] flex items-center justify-center bg-[#fdfdfd]"
+                      className="w-[36px] h-[36px] sm:w-[40px] sm:h-[40px] md:w-[44px] md:h-[44px] border-b border-r border-[#8cb7e4] flex items-center justify-center bg-white"
                     >
                       {item && (
                         <div
-                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform hover:scale-110 ${
+                          className={`w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] md:w-[37px] md:h-[37px] rounded-full flex items-center justify-center text-sm sm:text-base md:text-[17px] font-black text-slate-950 bg-white transition-transform hover:scale-110 border-[3px] md:border-[3.5px] ${
                             isBig
-                              ? 'bg-[#ec4899] border border-[#db2777]' // Pink for ធំ (Big)
-                              : 'bg-[#06b6d4] border border-[#0891b2]' // Cyan for តូច (Small)
+                              ? 'border-[#ff2a70]' // Vibrant Pink for ធំ (Big: 7-12)
+                              : 'border-[#00b0ff]' // Vibrant Sky Blue for តូច (Small: 1-6)
                           }`}
                           title={`#${item.roundId} | លេខ ${item.number} (${item.animal}) - ${isBig ? 'ធំ' : 'តូច'}`}
                         >
@@ -142,33 +163,33 @@ export const RoadGrid: React.FC<RoadGridProps> = ({ history }) => {
       {/* Right: ពណ៌ / សេសគូ (Color / Odd-Even Road) */}
       <div className="flex flex-col">
         {/* Header */}
-        <div className="bg-[#cbd5e1] text-[#334155] font-bold text-center py-1 text-sm tracking-wider border-b border-[#94a3b8]">
+        <div className="bg-[#dae4f0] text-[#334155] font-bold text-center py-2 text-base md:text-lg tracking-wide border-b border-[#8cb7e4]">
           ពណ៌ / សេសគូ
         </div>
 
-        {/* Matrix Grid */}
-        <div className="overflow-x-auto p-1 bg-white">
-          <div className="inline-grid grid-rows-6 grid-flow-col gap-0 border border-[#cbd5e1] min-w-full">
+        {/* Matrix Grid matching user platform image */}
+        <div ref={rightScrollRef} className="overflow-x-auto p-0 bg-white">
+          <div className="inline-block min-w-full">
             {Array.from({ length: NUM_ROWS }).map((_, rIdx) => (
               <div key={rIdx} className="flex">
-                {Array.from({ length: NUM_COLS }).map((_, cIdx) => {
-                  const item = colorParityRoad[cIdx]?.[rIdx];
+                {Array.from({ length: colorParityRoad.totalCols }).map((_, cIdx) => {
+                  const item = colorParityRoad.cols[cIdx]?.[rIdx];
                   const isOdd = item?.parity === 'odd';
-                  const colorClass =
+                  const bgClass =
                     item?.color === 'red'
-                      ? 'bg-[#ef4444] border-[#dc2626]'
+                      ? 'bg-[#e50914]'
                       : item?.color === 'green'
-                      ? 'bg-[#16a34a] border-[#15803d]'
-                      : 'bg-[#2563eb] border-[#1d4ed8]';
+                      ? 'bg-[#00a651]'
+                      : 'bg-[#0038e0]';
 
                   return (
                     <div
                       key={cIdx}
-                      className="w-7 h-7 sm:w-8 sm:h-8 border-b border-r border-[#e2e8f0] flex items-center justify-center bg-[#fdfdfd]"
+                      className="w-[36px] h-[36px] sm:w-[40px] sm:h-[40px] md:w-[44px] md:h-[44px] border-b border-r border-[#8cb7e4] flex items-center justify-center bg-white"
                     >
                       {item && (
                         <div
-                          className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold text-white shadow-sm transition-transform hover:scale-110 border ${colorClass}`}
+                          className={`w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] md:w-[37px] md:h-[37px] rounded-full flex items-center justify-center text-sm sm:text-base md:text-[17px] font-black text-white shadow-xs transition-transform hover:scale-110 ${bgClass}`}
                           title={`#${item.roundId} | ${item.color.toUpperCase()} - ${isOdd ? 'សេស (Odd)' : 'គូ (Even)'}`}
                         >
                           {isOdd ? 'ស' : 'គ'}

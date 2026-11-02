@@ -185,6 +185,32 @@ class SoundEffects {
     });
   }
 
+  // Card flip / open swoosh sound for sequential reveal
+  public playCardFlip(step: number = 1) {
+    if (this.muted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    // Ascending melodic pitch as steps progress
+    const baseFreq = 380 + (step * 28);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(baseFreq, t);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.4, t + 0.08);
+
+    gain.gain.setValueAtTime(0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.09);
+  }
+
   // Action / Click
   public playButton() {
     if (this.muted) return;
@@ -207,6 +233,30 @@ class SoundEffects {
 
     osc.start(t);
     osc.stop(t + 0.04);
+  }
+
+  // Warning buzz when bet attempt is blocked after 10s mark
+  public playBlocked() {
+    if (this.muted) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(240, t);
+    osc.frequency.setValueAtTime(190, t + 0.08);
+
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.18);
   }
 }
 

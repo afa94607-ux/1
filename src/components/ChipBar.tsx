@@ -28,12 +28,12 @@ export const ChipBar: React.FC<ChipBarProps> = ({
   canRepeat,
 }) => {
   const chips = [
-    { value: 1000, label: '1K', color: 'from-blue-500 to-blue-700', border: 'border-blue-300' },
-    { value: 5000, label: '5K', color: 'from-emerald-500 to-emerald-700', border: 'border-emerald-300' },
-    { value: 10000, label: '10K', color: 'from-amber-500 to-amber-700', border: 'border-amber-300' },
-    { value: 50000, label: '50K', color: 'from-purple-500 to-purple-700', border: 'border-purple-300' },
-    { value: 100000, label: '100K', color: 'from-rose-500 to-rose-700', border: 'border-rose-300' },
-    { value: 500000, label: '500K', color: 'from-slate-700 to-slate-900', border: 'border-yellow-400' },
+    { value: 1000, label: '1ពាន់៛', color: 'from-blue-500 to-blue-700', border: 'border-blue-300' },
+    { value: 5000, label: '5ពាន់៛', color: 'from-emerald-500 to-emerald-700', border: 'border-emerald-300' },
+    { value: 10000, label: '1ម៉ឺន៛', color: 'from-amber-500 to-amber-700', border: 'border-amber-300' },
+    { value: 50000, label: '5ម៉ឺន៛', color: 'from-purple-500 to-purple-700', border: 'border-purple-300' },
+    { value: 100000, label: '10ម៉ឺន៛', color: 'from-rose-500 to-rose-700', border: 'border-rose-300' },
+    { value: 500000, label: '50ម៉ឺន៛', color: 'from-slate-700 to-slate-900', border: 'border-yellow-400' },
   ];
 
   const formatKHR = (amount: number) => {

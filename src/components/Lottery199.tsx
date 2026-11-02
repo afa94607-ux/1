@@ -78,9 +78,27 @@ export const Lottery199: React.FC<Lottery199Props> = ({
   });
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
 
-  // History & Betting
+  // History & Betting with persistent storage
+  const LOTTERY_199_STORAGE_KEY = 'cambodia_lottery_199_bet_history_v2';
   const [history, setHistory] = useState<Lottery199Result[]>(INITIAL_199_HISTORY);
-  const [recentBets, setRecentBets] = useState<Lottery199BetRecord[]>([]);
+  const [recentBets, setRecentBets] = useState<Lottery199BetRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(LOTTERY_199_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to load 199 bet history', e);
+    }
+    return [];
+  });
+
+  // Sync 1/99 bets to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOTTERY_199_STORAGE_KEY, JSON.stringify(recentBets));
+    } catch (e) {
+      console.warn('Failed to save 199 bet history', e);
+    }
+  }, [recentBets]);
 
   // Selection Controls
   const [mode, setMode] = useState<'number' | 'range'>('number');
@@ -179,20 +197,17 @@ export const Lottery199: React.FC<Lottery199Props> = ({
         });
 
         const isWon = totalWinPayout > 0;
-        const betRecord: Lottery199BetRecord = {
-          id: `bet_199_${Date.now()}`,
-          roundId: currentRoundId,
-          time: timeStr,
-          posts: selectedPosts,
-          numbers: selectedNumbers,
-          amountPerBet: stakeAmount,
-          totalStake: activeStakeInPlay,
-          totalPayout: totalWinPayout,
-          status: isWon ? 'won' : 'lost',
-          winningDetails: hits,
-        };
-
-        setRecentBets((prev) => [betRecord, ...prev]);
+        setRecentBets((prev) =>
+          prev.map((rec) => {
+            if (rec.status !== 'pending' && rec.roundId !== currentRoundId) return rec;
+            return {
+              ...rec,
+              totalPayout: totalWinPayout,
+              status: isWon ? 'won' : 'lost',
+              winningDetails: hits,
+            };
+          })
+        );
         setActiveStakeInPlay(0);
 
         if (isWon) {
@@ -260,6 +275,23 @@ export const Lottery199: React.FC<Lottery199Props> = ({
     sound.playChip();
     onUpdateBalance(balance - totalStake);
     setActiveStakeInPlay((prev) => prev + totalStake);
+
+    // Immediately record pending bet into persistent history
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newBetRecord: Lottery199BetRecord = {
+      id: `199_bet_${Date.now()}`,
+      roundId: currentRoundId,
+      time: timeStr,
+      posts: [...selectedPosts],
+      numbers: [...selectedNumbers],
+      amountPerBet: stakeAmount,
+      totalStake: totalStake,
+      totalPayout: 0,
+      status: 'pending',
+    };
+    setRecentBets((prev) => [newBetRecord, ...prev]);
+
     setToastNotice(`បានបញ្ជូនការភ្នាល់ ${totalStake.toLocaleString()}៛ ជោគជ័យ!`);
     setTimeout(() => setToastNotice(null), 3000);
   };
@@ -293,7 +325,7 @@ export const Lottery199: React.FC<Lottery199Props> = ({
             </button>
           </div>
           <div className="text-[#1e40af] font-bold text-xs mb-2">
-            (KHR) AADPDPP004
+            (៛) AADPDPP004
           </div>
 
           {/* Row 1: Balance (សមតុល្យទឹកប្រាក់) */}
@@ -326,47 +358,78 @@ export const Lottery199: React.FC<Lottery199Props> = ({
         <div className="flex items-center justify-between px-3 py-1.5 bg-[#e2e8f0] text-slate-800 font-bold border-y border-[#cbd5e1]">
           <div className="flex items-center gap-1">
             <span>ទើបភ្នាល់</span>
-            <span className="bg-white text-slate-700 px-1 rounded text-[10px] font-bold">
-              3
+            <span className="bg-white text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-slate-300">
+              {recentBets.length}
             </span>
-            <span>ជើងចុងក្រោយ</span>
+            <span className="text-slate-500 text-[10px] font-normal">(History)</span>
           </div>
-          <div className="flex items-center gap-1">
-            <label className="flex items-center gap-1 text-[11px] font-normal cursor-pointer text-slate-600">
-              <input type="checkbox" defaultChecked className="rounded text-blue-600" />
-              <span>ទំព័រថ្មី</span>
-            </label>
+          <div className="flex items-center gap-1.5">
+            {recentBets.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRecentBets([]);
+                  try {
+                    localStorage.removeItem(LOTTERY_199_STORAGE_KEY);
+                  } catch (e) {
+                    console.warn(e);
+                  }
+                }}
+                className="text-slate-500 hover:text-rose-600 transition-colors text-[10px] underline"
+                title="Clear history"
+              >
+                លុប
+              </button>
+            )}
             <button onClick={() => sound.playButton()} className="text-slate-600 hover:text-blue-700">
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Recent Bets List */}
-        <div className="divide-y divide-slate-100 bg-white">
+        <div className="divide-y divide-slate-100 bg-white max-h-[260px] overflow-y-auto scrollbar-thin">
           {recentBets.length === 0 ? (
             <div className="p-4 text-center text-slate-400 text-xs italic">
               មិនទាន់មានការភ្នាល់នៅឡើយទេ
             </div>
           ) : (
-            recentBets.slice(0, 3).map((bet) => (
-              <div key={bet.id} className="p-2 flex flex-col gap-0.5 text-[11px] hover:bg-slate-50">
+            recentBets.slice(0, 5).map((bet) => (
+              <div key={bet.id} className="p-2 flex flex-col gap-1 text-[11px] hover:bg-slate-50 transition-colors">
                 <div className="flex justify-between items-center text-slate-600">
                   <span className="font-bold text-blue-700">{bet.roundId}</span>
                   <span
-                    className={`font-bold px-1.5 py-0.2 rounded text-[10px] ${
+                    className={`font-bold px-1.5 py-0.5 rounded text-[10px] border ${
                       bet.status === 'won'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-rose-100 text-rose-700'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : bet.status === 'lost'
+                        ? 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold tracking-wide'
+                        : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
                     }`}
                   >
-                    {bet.status === 'won' ? 'ឈ្នះ' : 'ចាញ់'}
+                    {bet.status === 'won' ? 'ឈ្នះ (Won)' : bet.status === 'lost' ? 'Lost' : 'កំពុងរង់ចាំ'}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-700">
-                  <span>ភ្នាល់ប៉ុស្តិ៍: {bet.posts.join(',')} ({bet.numbers.length} លេខ)</span>
-                  <span className="font-bold text-slate-800">
-                    {bet.totalStake.toLocaleString()}៛
+                <div className="flex justify-between text-slate-700 text-[10px]">
+                  <span>ប៉ុស្តិ៍ {bet.posts.join(',')} ({bet.numbers.length} លេខ)</span>
+                  <span className="text-blue-600 font-mono font-bold bg-blue-50 px-1 rounded">x80</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600 text-[10px] pt-1 border-t border-dashed border-slate-100">
+                  <span>ភ្នាល់: <strong className="text-slate-900">{bet.totalStake.toLocaleString()}៛</strong></span>
+                  <span>
+                    {bet.status === 'pending' ? (
+                      <span className="text-emerald-700 font-medium">
+                        អាចឈ្នះ: <strong className="text-emerald-800 font-bold">{(bet.amountPerBet * 80).toLocaleString()}៛</strong>
+                      </span>
+                    ) : bet.status === 'won' ? (
+                      <span className="text-emerald-600 font-bold">
+                        +{bet.totalPayout.toLocaleString()}៛
+                      </span>
+                    ) : (
+                      <span className="text-rose-600 font-semibold">
+                        Lost (-{bet.totalStake.toLocaleString()}៛)
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>

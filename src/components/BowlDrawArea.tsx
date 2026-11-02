@@ -1,142 +1,277 @@
 import React from 'react';
-import { GoldIngotIcon, AnimalArtwork } from './AnimalIllustrations';
+import { AnimalArtwork } from './AnimalIllustrations';
 import { DrawResult, ANIMALS_DATA } from '../types';
+import { CountdownSyncSegment } from '../utils/countdownAudioSync';
 
 interface BowlDrawAreaProps {
   countdown: number;
   isRevealing: boolean;
+  revealStep: number; // 0: closed, 1..6: row 1, 7..11: row 2, 12: row 3 final result
   latestResult: DrawResult | null;
   onBowlClick?: (index: number) => void;
+  onTriggerDraw?: () => void;
+  audioSyncSegment?: CountdownSyncSegment | null;
+  isBettingClosed?: boolean;
+  onTrigger10sCountdown?: () => void;
+  onBlockedAttempt?: () => void;
 }
 
 export const BowlDrawArea: React.FC<BowlDrawAreaProps> = ({
-  countdown,
   isRevealing,
+  revealStep,
   latestResult,
   onBowlClick,
+  audioSyncSegment,
+  isBettingClosed = false,
+  onBlockedAttempt,
 }) => {
-  const isUrgent = countdown <= 5 && countdown > 0;
-
   return (
-    <div className="flex-1 bg-[#ffffff] p-3 flex flex-col items-center justify-between min-h-[380px] border-r border-[#94a3b8] relative overflow-hidden select-none">
+    <div className="flex-1 bg-[#ffffff] p-2.5 sm:p-3 flex flex-col items-center justify-between min-h-[400px] border-r border-[#94a3b8] relative overflow-hidden select-none">
       {/* Background radial soft aura */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-50/50 via-slate-50/30 to-white pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-50/40 via-slate-50/20 to-white pointer-events-none" />
 
-      {/* Row 1: 6 Bowls (1 to 6) */}
-      <div className="w-full flex justify-center gap-1.5 sm:gap-2 z-10">
-        {Array.from({ length: 6 }).map((_, idx) => {
-          const num = idx + 1;
-          const isWinningBowl = isRevealing && latestResult?.number === num;
+      {/* Row 1 Dishes: Numbers 1–6 (Sequential Interval: 1,100ms) */}
+      <div className="w-full flex flex-col items-center z-10 mb-1">
+        <div className="w-full flex justify-center gap-1.5 sm:gap-2">
+          {Array.from({ length: 6 }).map((_, idx) => {
+            const num = idx + 1;
+            const isOpen = isRevealing && revealStep >= num;
+            const isWinningBowl = isRevealing && revealStep >= 12 && latestResult?.number === num;
+            const isJustOpened = isRevealing && revealStep === num;
 
-          return (
-            <div
-              key={num}
-              onClick={() => onBowlClick?.(num)}
-              className={`p-1 bg-white rounded-md border-2 cursor-pointer transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-sm ${
-                isWinningBowl
-                  ? 'border-yellow-400 ring-4 ring-yellow-300 ring-opacity-70 scale-110 shadow-lg animate-bounce'
-                  : 'border-[#3b82f6] hover:border-blue-700'
-              }`}
-              title={`ពានលេខ ${num} (${ANIMALS_DATA[num].khmerName})`}
-            >
-              <GoldIngotIcon size={46} className="sm:w-[54px] sm:h-[54px]" />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Row 2: 5 Bowls (7 to 11) */}
-      <div className="w-full flex justify-center gap-1.5 sm:gap-2 z-10 mt-1">
-        {Array.from({ length: 5 }).map((_, idx) => {
-          const num = idx + 7;
-          const isWinningBowl = isRevealing && latestResult?.number === num;
-
-          return (
-            <div
-              key={num}
-              onClick={() => onBowlClick?.(num)}
-              className={`p-1 bg-white rounded-md border-2 cursor-pointer transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-sm ${
-                isWinningBowl
-                  ? 'border-yellow-400 ring-4 ring-yellow-300 ring-opacity-70 scale-110 shadow-lg animate-bounce'
-                  : 'border-[#3b82f6] hover:border-blue-700'
-              }`}
-              title={`ពានលេខ ${num} (${ANIMALS_DATA[num].khmerName})`}
-            >
-              <GoldIngotIcon size={46} className="sm:w-[54px] sm:h-[54px]" />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Center: Main Draw Chamber / Ingot 12 */}
-      <div className="relative my-2 z-10 flex flex-col items-center">
-        {/* Urgent or Revealing Status Indicator Banner */}
-        {isRevealing ? (
-          <div className="mb-2 px-4 py-1 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-900 font-bold text-xs sm:text-sm tracking-wide shadow-md animate-pulse">
-            ✨ លទ្ធផលចេញ: លេខ {latestResult?.number} ({latestResult?.animal}) ✨
-          </div>
-        ) : isUrgent ? (
-          <div className="mb-2 px-3 py-0.5 rounded-full bg-red-600 text-white font-bold text-xs shadow animate-pulse">
-            ⏳ ត្រៀមចេញលទ្ធផល ({countdown}វិនាទី)
-          </div>
-        ) : (
-          <div className="mb-2 px-3 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[11px] font-semibold">
-            កំពុងរង់ចាំការចាប់ឆ្នោតបន្ទាប់
-          </div>
-        )}
-
-        {/* Big Central Card */}
-        <div
-          className={`relative p-2.5 bg-white rounded-xl border-3 shadow-md transition-all duration-300 ${
-            isRevealing
-              ? 'border-yellow-400 shadow-2xl ring-4 ring-yellow-400/50'
-              : isUrgent
-              ? 'border-red-500 shadow-lg animate-[wiggle_0.3s_ease-in-out_infinite]'
-              : 'border-[#2563eb] hover:shadow-lg'
-          }`}
-        >
-          {/* Main Ingot or Revealing Winning Number */}
-          {isRevealing && latestResult ? (
-            <div className="w-[130px] h-[130px] sm:w-[155px] sm:h-[155px] rounded-full bg-gradient-to-tr from-yellow-500 via-amber-300 to-yellow-100 border-4 border-yellow-400 flex flex-col items-center justify-center p-2 shadow-2xl relative overflow-hidden animate-[spin_0.8s_ease-out_1]">
-              <div className="absolute inset-0 bg-white/20 animate-pulse pointer-events-none" />
-              <div className="w-12 h-12 mb-1">
-                <AnimalArtwork number={latestResult.number} />
-              </div>
+            return (
               <div
-                className={`text-2xl sm:text-3xl font-black ${
-                  latestResult.color === 'red'
-                    ? 'text-red-700'
-                    : latestResult.color === 'green'
-                    ? 'text-green-700'
-                    : 'text-blue-800'
+                key={num}
+                onClick={() => {
+                  if (isBettingClosed) {
+                    onBlockedAttempt?.();
+                    return;
+                  }
+                  onBowlClick?.(num);
+                }}
+                className={`p-0.5 sm:p-1 bg-white rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-xs overflow-hidden relative ${
+                  isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+                } ${
+                  isWinningBowl
+                    ? 'scale-110 shadow-xl ring-4 ring-yellow-400 z-20 animate-bounce'
+                    : isJustOpened
+                    ? 'scale-105 shadow-md z-15 ring-2 ring-blue-400'
+                    : ''
+                }`}
+                title={
+                  isBettingClosed
+                    ? `បិទការទទួលការភ្នាល់ (Betting Closed) - ពានលេខ ${num}`
+                    : `ពានលេខ ${num} (${ANIMALS_DATA[num].khmerName})`
+                }
+              >
+                {/* 3D Flip Card Container: Top Covered Bowls Grid (85px × 83px approx 1:1 square with rounded corners) */}
+                <div className="w-[50px] h-[49px] sm:w-[68px] sm:h-[66px] md:w-[85px] md:h-[83px] [perspective:800px]">
+                  <div
+                    className={`w-full h-full relative transition-transform duration-500 [transform-style:preserve-3d] ${
+                      isOpen ? '[transform:rotateY(0deg)]' : '[transform:rotateY(180deg)]'
+                    }`}
+                  >
+                    {/* Front Face: Animal Artwork & Number */}
+                    <div className="absolute inset-0 [backface-visibility:hidden] rounded-lg overflow-hidden bg-[#fefce8] flex items-center justify-center border border-amber-300/60 shadow-xs">
+                      <AnimalArtwork number={num} className="w-full h-full object-cover pointer-events-none" />
+                      {/* Victory Tag */}
+                      {isWinningBowl && (
+                        <div className="absolute bottom-0 inset-x-0 bg-red-600 text-yellow-200 text-[8px] sm:text-[9px] font-black text-center py-0.5 shadow-xs">
+                          ឈ្នះ 👑
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Back Face: Hidden Dish Cover Image (Rendered Display Dimensions: 85px × 83px, 1:1 square with rounded corners) */}
+                    <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-lg overflow-hidden shadow-xs bg-white relative">
+                      <img
+                        src="/assets/aistudio/f8a5d8e0-4865-44e6-94ab-7b9f436a53fd_3aa68070.jpg"
+                        alt={`ពានលេខ ${num}`}
+                        className="w-full h-full object-cover rounded-lg pointer-events-none"
+                      />
+                      {/* Number Tag on Closed Cover */}
+                      <div className="absolute top-0.5 left-0.5 bg-black/70 text-yellow-300 text-[9px] font-black px-1.5 py-0.2 rounded-full border border-yellow-400/40 pointer-events-none">
+                        {num}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Row 2 Dishes: Numbers 7–11 (Sequential Interval: 1,100ms each) */}
+      <div className="w-full flex flex-col items-center z-10 mb-2">
+        <div className="w-full flex justify-center gap-1.5 sm:gap-2">
+          {Array.from({ length: 5 }).map((_, idx) => {
+            const num = idx + 7;
+            const isOpen = isRevealing && revealStep >= num;
+            const isWinningBowl = isRevealing && revealStep >= 12 && latestResult?.number === num;
+            const isJustOpened = isRevealing && revealStep === num;
+
+            return (
+              <div
+                key={num}
+                onClick={() => {
+                  if (isBettingClosed) {
+                    onBlockedAttempt?.();
+                    return;
+                  }
+                  onBowlClick?.(num);
+                }}
+                className={`p-0.5 sm:p-1 bg-white rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-xs overflow-hidden relative ${
+                  isBettingClosed ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+                } ${
+                  isWinningBowl
+                    ? 'scale-110 shadow-xl ring-4 ring-yellow-400 z-20 animate-bounce'
+                    : isJustOpened
+                    ? 'scale-105 shadow-md z-15 ring-2 ring-blue-400'
+                    : ''
+                }`}
+                title={
+                  isBettingClosed
+                    ? `បិទការទទួលការភ្នាល់ (Betting Closed) - ពានលេខ ${num}`
+                    : `ពានលេខ ${num} (${ANIMALS_DATA[num].khmerName})`
+                }
+              >
+                {/* 3D Flip Card Container: Top Covered Bowls Grid (85px × 83px approx 1:1 square with rounded corners) */}
+                <div className="w-[50px] h-[49px] sm:w-[68px] sm:h-[66px] md:w-[85px] md:h-[83px] [perspective:800px]">
+                  <div
+                    className={`w-full h-full relative transition-transform duration-500 [transform-style:preserve-3d] ${
+                      isOpen ? '[transform:rotateY(0deg)]' : '[transform:rotateY(180deg)]'
+                    }`}
+                  >
+                    {/* Front Face: Animal Artwork & Number */}
+                    <div className="absolute inset-0 [backface-visibility:hidden] rounded-lg overflow-hidden bg-[#fefce8] flex items-center justify-center border border-amber-300/60 shadow-xs">
+                      <AnimalArtwork number={num} className="w-full h-full object-cover pointer-events-none" />
+                      {/* Victory Tag */}
+                      {isWinningBowl && (
+                        <div className="absolute bottom-0 inset-x-0 bg-red-600 text-yellow-200 text-[8px] sm:text-[9px] font-black text-center py-0.5 shadow-xs">
+                          ឈ្នះ 👑
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Back Face: Hidden Dish Cover Image (Rendered Display Dimensions: 85px × 83px, 1:1 square with rounded corners) */}
+                    <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-lg overflow-hidden shadow-xs bg-white relative">
+                      <img
+                        src="/assets/aistudio/f8a5d8e0-4865-44e6-94ab-7b9f436a53fd_3aa68070.jpg"
+                        alt={`ពានលេខ ${num}`}
+                        className="w-full h-full object-cover rounded-lg pointer-events-none"
+                      />
+                      {/* Number Tag on Closed Cover */}
+                      <div className="absolute top-0.5 left-0.5 bg-black/70 text-yellow-300 text-[9px] font-black px-1.5 py-0.2 rounded-full border border-yellow-400/40 pointer-events-none">
+                        {num}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Row 3 (Final Result / Number 12): Central Box revealing the winning animal and number 1,100ms after number 11 */}
+      <div className="w-full flex flex-col items-center justify-center z-10 mb-2">
+        <div
+          className="relative group cursor-pointer"
+          onClick={() => {
+            if (isBettingClosed) {
+              onBlockedAttempt?.();
+              return;
+            }
+            onBowlClick?.(12);
+          }}
+          title={
+            isBettingClosed
+              ? `បិទការទទួលការភ្នាល់ (Betting Closed) - ពានលេខ ១២`
+              : `ពានលេខ ១២ (${ANIMALS_DATA[12].khmerName}) - លទ្ធផលចុងក្រោយ`
+          }
+        >
+          {/* Central Box 3D Container */}
+          <div
+            className={`p-1 sm:p-1.5 bg-gradient-to-b from-amber-200 via-amber-100 to-amber-200 rounded-2xl shadow-lg border-2 border-amber-400/80 transition-all duration-500 transform hover:scale-105 active:scale-95 ${
+              isRevealing && revealStep >= 12
+                ? 'scale-105 shadow-2xl ring-4 ring-yellow-400 animate-pulse'
+                : 'hover:shadow-xl'
+            }`}
+          >
+            {/* 3D Flip Card Container: Desktop 224px × 224px (w-56 h-56), Mobile/Tablet 176px × 176px to 208px × 208px (w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56) */}
+            <div className="w-44 h-44 sm:w-52 sm:h-52 md:w-56 md:h-56 [perspective:1000px]">
+              <div
+                className={`w-full h-full relative transition-transform duration-700 [transform-style:preserve-3d] ${
+                  isRevealing && revealStep >= 12
+                    ? '[transform:rotateY(0deg)]'
+                    : '[transform:rotateY(180deg)]'
                 }`}
               >
-                {latestResult.number}
-              </div>
-              <div className="text-[11px] font-bold text-slate-800 tracking-wider">
-                {latestResult.animal}
-              </div>
-            </div>
-          ) : (
-            <div
-              className={`transition-transform duration-200 ${
-                isUrgent ? 'scale-105' : ''
-              }`}
-            >
-              <GoldIngotIcon
-                size={135}
-                className="sm:w-[155px] sm:h-[155px]"
-              />
-            </div>
-          )}
-        </div>
+                {/* Front Face: Winning Animal Artwork & Final Result */}
+                <div className="absolute inset-0 [backface-visibility:hidden] rounded-xl overflow-hidden bg-gradient-to-b from-amber-50 to-yellow-100 flex flex-col items-center justify-center border-2 border-yellow-400 shadow-inner p-1">
+                  {latestResult ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center relative">
+                      <div className="w-full h-[78%] rounded-lg overflow-hidden bg-white/80 shadow-xs flex items-center justify-center">
+                        <AnimalArtwork number={latestResult.number} className="w-full h-full object-cover pointer-events-none" />
+                      </div>
+                      <div className="w-full mt-1 bg-gradient-to-r from-red-600 via-amber-600 to-red-600 text-yellow-200 text-[11px] sm:text-xs md:text-sm font-black text-center py-0.5 rounded-md shadow-xs flex items-center justify-center gap-1">
+                        <span>👑</span>
+                        <span>{latestResult.number}. {latestResult.animal}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 text-xs font-medium">រង់ចាំចាប់ឆ្នោត</div>
+                  )}
+                </div>
 
-        {/* Prompt hint */}
-        <div className="text-[11px] text-[#64748b] font-medium mt-1 text-center">
-          {isRevealing
-            ? `ជុំបន្ទាប់នឹងចាប់ផ្តើមឆាប់ៗនេះ`
-            : `ចុចលើជម្រើសភ្នាល់ដើម្បីចាក់ (Odds 1.95 / 2.95 / 11)`}
+                {/* Back Face: Image for New Result (Cover) */}
+                <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-xl overflow-hidden shadow-md bg-slate-900 border border-amber-300 relative">
+                  <img
+                    src="/assets/aistudio/f8a5d8e0-4865-44e6-94ab-7b9f436a53fd_3aa68070.jpg"
+                    alt="រូបភាពលទ្ធផលថ្មី - New Result Dish Cover"
+                    className="w-full h-full object-cover pointer-events-none rounded-xl"
+                  />
+                  {/* Subtle decorative gold badge */}
+                  <div className="absolute top-1 right-1 bg-black/60 text-yellow-300 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full border border-yellow-400/50 backdrop-blur-xs">
+                    ★ ១២
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Floating Dynamic Status Banners (10s audio voice countdown & Winner reveal announcement) */}
+      <div className="z-20 w-full flex flex-col items-center justify-center min-h-[50px]">
+        {audioSyncSegment ? (
+          <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white font-extrabold shadow-xl border-2 border-yellow-300 flex flex-col items-center gap-1 animate-pulse">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-yellow-200">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-300 animate-ping" />
+              <span>🚫 បិទការទទួលការភ្នាល់ (Betting Closed)</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl sm:text-3xl font-black text-yellow-300 drop-shadow">
+                {audioSyncSegment.number === 0 ? '០' : audioSyncSegment.number}
+              </span>
+              <span className="text-base sm:text-xl font-black text-white drop-shadow">
+                {audioSyncSegment.khmerWord}
+              </span>
+              <span className="text-xs sm:text-sm text-yellow-200 font-bold">
+                ({audioSyncSegment.romanized})
+              </span>
+            </div>
+          </div>
+        ) : isRevealing && revealStep >= 12 && latestResult ? (
+          <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-900 font-extrabold text-xs sm:text-sm tracking-wide shadow-xl border-2 border-yellow-200 animate-pulse flex items-center gap-2">
+            <span className="text-base">🏆</span>
+            <span>
+              លទ្ធផលឈ្នះ: លេខ {latestResult.number} ({latestResult.animal}) - {latestResult.size === 'big' ? 'ធំ' : 'តូច'} | {latestResult.parity === 'odd' ? 'សេស' : 'គូ'}
+            </span>
+            <span className="text-base">✨</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

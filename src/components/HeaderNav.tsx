@@ -41,12 +41,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   };
 
   const mainTabs: { id: MainTab; label: string }[] = [
-    { id: 'home', label: 'ទំព័រដើម' },
-    { id: 'images', label: 'រូបភាព' },
     { id: 'lottery_12', label: 'ឆ្នោត 12' },
     { id: 'lottery_1_99', label: 'ឆ្នោត 1/99' },
     { id: 'report', label: 'របាយការណ៍សរុប' },
-    { id: 'image_results', label: 'លទ្ធផល រូបភាព' },
   ];
 
   return (
