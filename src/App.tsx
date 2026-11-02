@@ -120,10 +120,10 @@ export default function App() {
         setCountdown(segment.number);
       },
       () => {
-        // When audio finishes (after «សូមសំណាងល្អ» 0 / Draw), initiate draw sequence
+        // When audio finishes (after «សូមសំណាងល្អ» 0 / Draw), initiate draw sequence to reveal new result
         setIsAudioSyncing(false);
         setAudioSyncSegment(null);
-        startDrawSequence();
+        startDrawSequence(true);
       },
       sound.isMuted()
     );
@@ -194,14 +194,8 @@ export default function App() {
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
-        if (prev <= 1) {
-          // Time expired -> immediately start draw sequence to display new results
-          startDrawSequence();
-          return 0;
-        }
-
         if (prev <= 11) {
-          // Exactly 10 seconds remaining -> Trigger Real-Time Sound & Figure Synchronization
+          // Exactly 10 seconds remaining -> Trigger audible countdown with Real-Time Sound & Figure Synchronization
           start10sCountdown();
           return 10;
         }
@@ -296,8 +290,16 @@ export default function App() {
     }
   };
 
-  // Sequence of New Result Display (Every 3 minutes, sequential 1,100ms reveals, 5,000ms display)
-  const startDrawSequence = () => {
+  // Sequence of New Result Display (Only occurs AFTER audible countdown finishes)
+  const startDrawSequence = (fromAudioCompletion: boolean = false) => {
+    // Enforce that audible countdown must finish before revealing new results!
+    if (!fromAudioCompletion) {
+      if (!isRevealing && !isAudioSyncing) {
+        start10sCountdown();
+      }
+      return;
+    }
+
     if (isRevealing) return;
     clearAllDrawTimeouts();
     countdownAudioSync.stop();
@@ -558,7 +560,7 @@ export default function App() {
                   onBowlClick={(num) =>
                     handlePlaceBet(`animal_${num}` as BetCategory, 11, `ពានលេខ ${num}`)
                   }
-                  onTriggerDraw={startDrawSequence}
+                  onTriggerDraw={start10sCountdown}
                   audioSyncSegment={audioSyncSegment}
                   isBettingClosed={isBettingClosed}
                   onTrigger10sCountdown={start10sCountdown}
@@ -576,7 +578,7 @@ export default function App() {
                   latestResult={isRevealing && revealStep >= 12 ? pendingWinningResult : latestResult}
                   isRevealing={isRevealing && revealStep >= 12}
                   revealStep={revealStep}
-                  onRefreshRound={startDrawSequence}
+                  onRefreshRound={start10sCountdown}
                   audioSyncSegment={audioSyncSegment}
                   isBettingClosed={isBettingClosed}
                   onBlockedAttempt={handleBlockedAttempt}

@@ -121,7 +121,7 @@ export const RoadGrid: React.FC<RoadGridProps> = ({ history }) => {
       {/* Left: លេខ / គូចធំ (Number / Big-Small Road) */}
       <div className="border-r border-[#8cb7e4] flex flex-col">
         {/* Header */}
-        <div className="bg-[#dae4f0] text-[#334155] font-bold text-center py-2 text-base md:text-lg tracking-wide border-b border-[#8cb7e4]">
+        <div className="bg-[#dae4f0] text-[#334155] font-extrabold text-center py-2.5 text-lg md:text-xl tracking-wide border-b border-[#8cb7e4]">
           លេខ / គូចធំ
         </div>
 
@@ -137,11 +137,11 @@ export const RoadGrid: React.FC<RoadGridProps> = ({ history }) => {
                   return (
                     <div
                       key={cIdx}
-                      className="w-[36px] h-[36px] sm:w-[40px] sm:h-[40px] md:w-[44px] md:h-[44px] border-b border-r border-[#8cb7e4] flex items-center justify-center bg-white"
+                      className="w-[44px] h-[44px] sm:w-[50px] sm:h-[50px] md:w-[56px] md:h-[56px] border-b border-r border-[#8cb7e4] flex items-center justify-center bg-white"
                     >
                       {item && (
                         <div
-                          className={`w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] md:w-[37px] md:h-[37px] rounded-full flex items-center justify-center text-sm sm:text-base md:text-[17px] font-black text-slate-950 bg-white transition-transform hover:scale-110 border-[3px] md:border-[3.5px] ${
+                          className={`w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[49px] md:h-[49px] rounded-full flex items-center justify-center text-base sm:text-lg md:text-[21px] font-black text-slate-950 bg-white transition-transform hover:scale-110 border-[3.5px] md:border-[4px] shadow-xs ${
                             isBig
                               ? 'border-[#ff2a70]' // Vibrant Pink for ធំ (Big: 7-12)
                               : 'border-[#00b0ff]' // Vibrant Sky Blue for តូច (Small: 1-6)
@@ -163,7 +163,7 @@ export const RoadGrid: React.FC<RoadGridProps> = ({ history }) => {
       {/* Right: ពណ៌ / សេសគូ (Color / Odd-Even Road) */}
       <div className="flex flex-col">
         {/* Header */}
-        <div className="bg-[#dae4f0] text-[#334155] font-bold text-center py-2 text-base md:text-lg tracking-wide border-b border-[#8cb7e4]">
+        <div className="bg-[#dae4f0] text-[#334155] font-extrabold text-center py-2.5 text-lg md:text-xl tracking-wide border-b border-[#8cb7e4]">
           ពណ៌ / សេសគូ
         </div>
 
@@ -185,11 +185,11 @@ export const RoadGrid: React.FC<RoadGridProps> = ({ history }) => {
                   return (
                     <div
                       key={cIdx}
-                      className="w-[36px] h-[36px] sm:w-[40px] sm:h-[40px] md:w-[44px] md:h-[44px] border-b border-r border-[#8cb7e4] flex items-center justify-center bg-white"
+                      className="w-[44px] h-[44px] sm:w-[50px] sm:h-[50px] md:w-[56px] md:h-[56px] border-b border-r border-[#8cb7e4] flex items-center justify-center bg-white"
                     >
                       {item && (
                         <div
-                          className={`w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] md:w-[37px] md:h-[37px] rounded-full flex items-center justify-center text-sm sm:text-base md:text-[17px] font-black text-white shadow-xs transition-transform hover:scale-110 ${bgClass}`}
+                          className={`w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[49px] md:h-[49px] rounded-full flex items-center justify-center text-base sm:text-lg md:text-[21px] font-black text-white shadow-xs transition-transform hover:scale-110 ${bgClass}`}
                           title={`#${item.roundId} | ${item.color.toUpperCase()} - ${isOdd ? 'សេស (Odd)' : 'គូ (Even)'}`}
                         >
                           {isOdd ? 'ស' : 'គ'}

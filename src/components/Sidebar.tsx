@@ -26,10 +26,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="w-full lg:w-[260px] xl:w-[280px] bg-white border-r border-[#94a3b8] flex flex-col select-none text-xs">
+    <div className="w-full lg:w-[290px] xl:w-[320px] bg-white border-r border-[#94a3b8] flex flex-col select-none text-sm">
       {/* Top Account Header Card */}
-      <div className="p-3 border-b border-[#cbd5e1] bg-slate-50">
-        <div className="flex items-center justify-between text-[#1e40af] font-bold text-xs mb-2">
+      <div className="p-3.5 border-b border-[#cbd5e1] bg-slate-50">
+        <div className="flex items-center justify-between text-[#1e40af] font-bold text-xs sm:text-sm mb-2.5">
           <span>2026-11-01 (៛) AADPDPP004</span>
           <button
             onClick={onRefreshResults}
@@ -43,15 +43,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Row 1: Balance (សមតុល្យទឹកប្រាក់) */}
-        <div className="flex items-center justify-between py-1 border-b border-dashed border-slate-200">
-          <span className="text-slate-700 font-medium">សមតុល្យទឹកប្រាក់</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[#16a34a] font-bold text-sm">
+        <div className="flex items-center justify-between py-1.5 border-b border-dashed border-slate-200">
+          <span className="text-slate-700 font-semibold text-xs sm:text-sm">សមតុល្យទឹកប្រាក់</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[#16a34a] font-extrabold text-sm sm:text-base">
               {formatKHR(balance)}
             </span>
             <button
               onClick={onAddBalance}
-              className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-1.5 py-0.5 rounded shadow-xs"
+              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-0.5 rounded shadow-xs font-bold"
               title="បញ្ចូលទឹកប្រាក់ (Add Funds)"
             >
               +
@@ -60,9 +60,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Row 2: Betting in play (លុយកំពុងភ្នាល់) */}
-        <div className="flex items-center justify-between py-1">
-          <span className="text-slate-700 font-medium">លុយកំពុងភ្នាល់</span>
-          <span className="text-[#16a34a] font-bold text-sm">
+        <div className="flex items-center justify-between py-1.5">
+          <span className="text-slate-700 font-semibold text-xs sm:text-sm">លុយកំពុងភ្នាល់</span>
+          <span className="text-[#16a34a] font-extrabold text-sm sm:text-base">
             {formatKHR(activeBetsTotal)}
           </span>
         </div>
@@ -70,14 +70,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Latest Results Section (លទ្ធផលចុងក្រោយ) */}
       <div className="flex-1 flex flex-col">
-        <div className="flex items-center justify-between px-3 py-1.5 bg-[#e2e8f0] text-slate-800 font-bold border-y border-[#cbd5e1]">
-          <span className="text-sm">លទ្ធផលចុងក្រោយ</span>
+        <div className="flex items-center justify-between px-3.5 py-2 bg-[#e2e8f0] text-slate-800 font-extrabold border-y border-[#cbd5e1]">
+          <span className="text-sm sm:text-base font-extrabold">លទ្ធផលចុងក្រោយ</span>
           <button
             onClick={onRefreshResults}
             className="text-slate-600 hover:text-blue-700 transition-transform active:rotate-180"
             title="Refresh Results"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
@@ -102,43 +102,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <div
                 key={res.roundId}
-                className={`px-3 py-1.5 flex items-center justify-between text-xs transition-colors ${
-                  isNewest ? 'bg-amber-50/70 border-l-4 border-amber-500 font-bold' : 'hover:bg-slate-50'
+                className={`px-3.5 py-2.5 flex items-center justify-between text-xs sm:text-sm transition-colors ${
+                  isNewest ? 'bg-amber-50/80 border-l-4 border-amber-500 font-bold' : 'hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center gap-1 font-semibold text-slate-700">
+                <div className="flex items-center gap-1.5 font-bold text-slate-700 text-xs sm:text-sm">
                   {isNewest && (
-                    <span className="px-1 py-0.2 bg-red-600 text-yellow-200 text-[9px] font-black rounded-xs animate-pulse">
+                    <span className="px-1.5 py-0.5 bg-red-600 text-yellow-200 text-[10px] font-black rounded-sm animate-pulse shadow-xs">
                       ថ្មី
                     </span>
                   )}
-                  <span>{res.roundId}</span>
-                  <span className="text-slate-500 font-normal">{res.time}</span>
+                  <span className="tracking-tight">{res.roundId}</span>
+                  <span className="text-slate-500 font-medium text-[11px] sm:text-xs">{res.time}</span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   {/* Size Pill */}
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[11px] font-bold text-white shadow-xs ${
+                    className={`px-2 py-0.5 rounded text-xs font-black text-white shadow-xs ${
                       isBig ? 'bg-[#ec4899]' : 'bg-[#06b6d4]'
                     }`}
                   >
                     {isBig ? 'ធំ' : 'តូច'}
                   </span>
 
-                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-300 text-xs">|</span>
 
                   {/* Color Pill */}
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[11px] font-bold text-white shadow-xs ${colorBadgeBg}`}
+                    className={`px-2 py-0.5 rounded text-xs font-black text-white shadow-xs ${colorBadgeBg}`}
                   >
                     {colorKhmer}
                   </span>
 
-                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-300 text-xs">|</span>
 
                   {/* Winning Number */}
-                  <span className="font-bold text-slate-800">
+                  <span className="font-black text-slate-900 text-xs sm:text-sm md:text-base">
                     លេខ {res.number}
                   </span>
                 </div>
@@ -148,20 +148,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Recent Bets Section (ប្រវត្តិភ្នាល់ / Recent Bets) */}
-        <div className="flex items-center justify-between px-3 py-1.5 bg-[#e2e8f0] text-slate-800 font-bold border-y border-[#cbd5e1] mt-2">
-          <div className="flex items-center gap-1.5">
-            <span>ប្រវត្តិភ្នាល់</span>
-            <span className="bg-white text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-slate-300">
+        <div className="flex items-center justify-between px-3.5 py-2 bg-[#e2e8f0] text-slate-800 font-extrabold border-y border-[#cbd5e1] mt-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm sm:text-base">ប្រវត្តិភ្នាល់</span>
+            <span className="bg-white text-blue-700 px-2 py-0.5 rounded text-xs font-bold border border-slate-300">
               {recentBets.length}
             </span>
-            <span className="text-slate-500 text-[10px] font-normal">(History)</span>
+            <span className="text-slate-500 text-xs font-medium">(History)</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {recentBets.length > 0 && onClearBetsHistory && (
               <button
                 type="button"
                 onClick={onClearBetsHistory}
-                className="text-slate-500 hover:text-rose-600 transition-colors text-[10px] underline"
+                className="text-slate-500 hover:text-rose-600 transition-colors text-xs underline font-semibold"
                 title="លុបប្រវត្តិភ្នាល់ (Clear History)"
               >
                 លុប
@@ -173,7 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="text-slate-600 hover:text-blue-700 transition-transform active:rotate-180"
               title="Refresh Results"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>

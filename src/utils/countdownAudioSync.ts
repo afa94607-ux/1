@@ -93,6 +93,15 @@ class CountdownAudioController {
       }
     }, 15100);
 
+    if (!this.audio && typeof window !== 'undefined') {
+      try {
+        this.audio = new Audio(COUNTDOWN_AUDIO_URL);
+        this.audio.preload = 'auto';
+      } catch (e) {
+        console.warn('Could not initialize Audio element in start():', e);
+      }
+    }
+
     if (this.audio) {
       try {
         this.audio.currentTime = 0;
@@ -167,10 +176,9 @@ class CountdownAudioController {
 
   private complete() {
     if (!this.active) return;
+    const cb = this.onCompleteCallback;
     this.stop();
-    if (this.onCompleteCallback) {
-      const cb = this.onCompleteCallback;
-      this.onCompleteCallback = null;
+    if (cb) {
       cb();
     }
   }
