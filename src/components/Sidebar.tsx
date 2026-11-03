@@ -101,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             return (
               <div
-                key={res.roundId}
+                key={`${res.roundId}-${res.timestamp || idx}`}
                 className={`px-3.5 py-2.5 flex items-center justify-between text-xs sm:text-sm transition-colors ${
                   isNewest ? 'bg-amber-50/80 border-l-4 border-amber-500 font-bold' : 'hover:bg-slate-50'
                 }`}

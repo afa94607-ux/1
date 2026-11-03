@@ -2,7 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { HeaderNav, MainTab, SubTab } from './components/HeaderNav';
 import { Sidebar } from './components/Sidebar';
-import { BowlDrawArea } from './components/BowlDrawArea';
+import { Side2BowlArena } from './components/Side2BowlArena';
+import {
+  testConnection,
+  subscribeToGameState,
+  subscribeToDrawHistory,
+  updateFirestoreGameState,
+  addFirestoreDrawResult,
+  signInWithGoogle,
+  signOutUser,
+  auth,
+} from './lib/firebase';
 import { BettingBoard } from './components/BettingBoard';
 import { RoadGrid } from './components/RoadGrid';
 import { WinLossView } from './components/WinLossView';
@@ -81,14 +91,50 @@ export default function App() {
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState<boolean>(false);
   const lastServerTickRef = useRef<number>(Date.now());
 
+  const WALLET_BALANCE_STORAGE_KEY = 'cambodia_lottery_balance_v2';
+  const CURRENT_ROUND_STORAGE_KEY = 'cambodia_lottery_current_round_v2';
+  const DRAW_HISTORY_STORAGE_KEY = 'cambodia_lottery_12_draw_history_v2';
+
   // Account & Wallet State
-  const [balance, setBalance] = useState<number>(500000); // 500,000 KHR initial
+  const [balance, setBalance] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(WALLET_BALANCE_STORAGE_KEY);
+      if (saved) {
+        const val = Number(saved);
+        if (!isNaN(val) && val >= 0) return val;
+      }
+    } catch (e) {}
+    return 500000;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(WALLET_BALANCE_STORAGE_KEY, balance.toString());
+    } catch (e) {}
+  }, [balance]);
+
   const [isTopUpOpen, setIsTopUpOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
 
   // Round & Timer State (3 minutes / 180s per round)
   const [countdown, setCountdown] = useState<number>(180);
-  const [currentRoundIndex, setCurrentRoundIndex] = useState<number>(284);
+  const [currentRoundIndex, setCurrentRoundIndex] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(CURRENT_ROUND_STORAGE_KEY);
+      if (saved) {
+        const val = Number(saved);
+        if (!isNaN(val) && val >= 284) return val;
+      }
+    } catch (e) {}
+    return 284;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CURRENT_ROUND_STORAGE_KEY, currentRoundIndex.toString());
+    } catch (e) {}
+  }, [currentRoundIndex]);
+
   const [currentRoundTime, setCurrentRoundTime] = useState<string>('16:22');
   const [isRevealing, setIsRevealing] = useState<boolean>(false);
   const [revealStep, setRevealStep] = useState<number>(0); // 0: closed, 1..6: row 1, 7..11: row 2, 12: row 3 final result
@@ -169,6 +215,7 @@ export default function App() {
   const handleSetForcedWinningNumber = (num: number | null) => {
     setForcedWinningNumber(num);
     realtimeSync.setForcedResult(num);
+    updateFirestoreGameState({ forcedWinningNumber: num });
   };
 
   const handleAddTransaction = (newTx: Omit<TransactionRecord, 'id' | 'timestamp' | 'timeString'>) => {
@@ -194,6 +241,7 @@ export default function App() {
   const handleAddManualResult = (result: DrawResult) => {
     setHistory((prev) => [result, ...prev]);
     realtimeSync.addManualResult(result);
+    addFirestoreDrawResult(result);
   };
 
   const handleDeleteResult = (roundId: string) => {
@@ -206,14 +254,55 @@ export default function App() {
       setForcedWinningNumber(targetNum);
     }
     realtimeSync.forceDrawNow(targetNum ?? forcedWinningNumber ?? undefined);
+    updateFirestoreGameState({
+      isRevealing: true,
+      revealStep: 1,
+      forcedWinningNumber: targetNum ?? forcedWinningNumber ?? null,
+    });
   };
 
   // Real-time cross-device synchronization hook
   useEffect(() => {
+    testConnection();
     realtimeSync.connect();
     realtimeSync.fetchInitialState();
 
     const unsubStatus = realtimeSync.subscribeStatus((st) => setConnectionStatus(st));
+
+    // Authoritative Firestore Listeners
+    const unsubFirestoreGame = subscribeToGameState((firestoreState) => {
+      if (!firestoreState) return;
+      if (firestoreState.forcedWinningNumber !== undefined) {
+        setForcedWinningNumber(firestoreState.forcedWinningNumber);
+      }
+      if (firestoreState.isRevealing !== undefined) {
+        setIsRevealing(firestoreState.isRevealing);
+      }
+      if (firestoreState.revealStep !== undefined) {
+        setRevealStep(firestoreState.revealStep);
+      }
+      if (firestoreState.countdown !== undefined) {
+        setCountdown(firestoreState.countdown);
+      }
+      if (firestoreState.roundIndex !== undefined) {
+        setCurrentRoundIndex(firestoreState.roundIndex);
+      }
+    });
+
+    const unsubFirestoreHistory = subscribeToDrawHistory((firestoreHistory) => {
+      if (firestoreHistory && firestoreHistory.length > 0) {
+        setHistory((prev) => {
+          const map = new Map<string, DrawResult>();
+          firestoreHistory.forEach((item: any) => {
+            if (item.roundId) map.set(item.roundId, item as DrawResult);
+          });
+          prev.forEach((item) => {
+            if (!map.has(item.roundId)) map.set(item.roundId, item);
+          });
+          return Array.from(map.values()).sort((a, b) => (b.roundIndex || 0) - (a.roundIndex || 0));
+        });
+      }
+    });
 
     const unsubscribe = realtimeSync.subscribe((stateUpdate, eventType) => {
       lastServerTickRef.current = Date.now();
@@ -271,6 +360,8 @@ export default function App() {
     return () => {
       unsubscribe();
       unsubStatus();
+      unsubFirestoreGame();
+      unsubFirestoreHistory();
     };
   }, []);
 
@@ -350,9 +441,33 @@ export default function App() {
     }, 3200);
   };
 
-  // Results History
-  const [history, setHistory] = useState<DrawResult[]>(INITIAL_HISTORY);
+  // Results History with persistent local caching for instant zero-flicker reloads
+  const [history, setHistory] = useState<DrawResult[]>(() => {
+    try {
+      const saved = localStorage.getItem(DRAW_HISTORY_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load draw history from localStorage', e);
+    }
+    return INITIAL_HISTORY;
+  });
   const latestResult = history[0] || null;
+
+  // Persist history updates to localStorage
+  useEffect(() => {
+    try {
+      if (history && history.length > 0) {
+        localStorage.setItem(DRAW_HISTORY_STORAGE_KEY, JSON.stringify(history));
+      }
+    } catch (e) {
+      console.warn('Failed to save draw history to localStorage', e);
+    }
+  }, [history]);
 
   // Betting State
   const [selectedChip, setSelectedChip] = useState<number>(10000); // 10,000 KHR default
@@ -853,12 +968,13 @@ export default function App() {
                   {/* Top Row: Center Bowls (Left) & Betting Odds + 12 Animals (Right) */}
                   <div className="flex flex-col md:flex-row border-b border-[#94a3b8]">
                   {/* 12 Bowls & Center Main Chamber */}
-                  <BowlDrawArea
+                  <Side2BowlArena
                     countdown={countdown}
                     isRevealing={isRevealing}
                     revealStep={revealStep}
                     latestResult={isRevealing ? pendingWinningResult : latestResult}
                     drawMix={drawMix}
+                    currentRoundId={`2004#${currentRoundIndex}`}
                     onBowlClick={(num) =>
                       handlePlaceBet(`animal_${num}` as BetCategory, 11, `ពានលេខ ${num}`)
                     }

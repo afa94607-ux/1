@@ -1,0 +1,431 @@
+{
+  "currentRoundIndex": 284,
+  "currentRoundTime": "16:22",
+  "history": [
+    {
+      "roundId": "2004#284",
+      "roundIndex": 284,
+      "time": "16:22",
+      "number": 7,
+      "animal": "មមី",
+      "color": "red",
+      "size": "big",
+      "parity": "odd",
+      "timestamp": 1793710500000
+    },
+    {
+      "roundId": "2004#283",
+      "roundIndex": 283,
+      "time": "16:19",
+      "number": 1,
+      "animal": "ជូត",
+      "color": "red",
+      "size": "small",
+      "parity": "odd",
+      "timestamp": 1793710406104
+    },
+    {
+      "roundId": "2004#282",
+      "roundIndex": 282,
+      "time": "16:15",
+      "number": 9,
+      "animal": "វក",
+      "color": "blue",
+      "size": "big",
+      "parity": "odd",
+      "timestamp": 1793710346104
+    },
+    {
+      "roundId": "2004#281",
+      "roundIndex": 281,
+      "time": "16:12",
+      "number": 8,
+      "animal": "មមែ",
+      "color": "green",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793710286104
+    },
+    {
+      "roundId": "2004#280",
+      "roundIndex": 280,
+      "time": "16:08",
+      "number": 10,
+      "animal": "រកា",
+      "color": "red",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793710226104
+    },
+    {
+      "roundId": "2004#279",
+      "roundIndex": 279,
+      "time": "16:05",
+      "number": 11,
+      "animal": "ច",
+      "color": "green",
+      "size": "big",
+      "parity": "odd",
+      "timestamp": 1793710166104
+    },
+    {
+      "roundId": "2004#278",
+      "roundIndex": 278,
+      "time": "16:01",
+      "number": 12,
+      "animal": "កុរ",
+      "color": "blue",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793710106104
+    },
+    {
+      "roundId": "2004#277",
+      "roundIndex": 277,
+      "time": "15:58",
+      "number": 9,
+      "animal": "វក",
+      "color": "blue",
+      "size": "big",
+      "parity": "odd",
+      "timestamp": 1793710046104
+    },
+    {
+      "roundId": "2004#276",
+      "roundIndex": 276,
+      "time": "15:54",
+      "number": 10,
+      "animal": "រកា",
+      "color": "red",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793709986104
+    },
+    {
+      "roundId": "2004#275",
+      "roundIndex": 275,
+      "time": "15:50",
+      "number": 8,
+      "animal": "មមែ",
+      "color": "green",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793709926104
+    },
+    {
+      "roundId": "2004#274",
+      "roundIndex": 274,
+      "time": "15:47",
+      "number": 6,
+      "animal": "ម្សាញ់",
+      "color": "blue",
+      "size": "small",
+      "parity": "even",
+      "timestamp": 1793709866104
+    },
+    {
+      "roundId": "2004#273",
+      "roundIndex": 273,
+      "time": "15:43",
+      "number": 2,
+      "animal": "ឆ្លូវ",
+      "color": "green",
+      "size": "small",
+      "parity": "even",
+      "timestamp": 1793709806104
+    },
+    {
+      "roundId": "2004#272",
+      "roundIndex": 272,
+      "time": "15:40",
+      "number": 12,
+      "animal": "កុរ",
+      "color": "blue",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793709746104
+    },
+    {
+      "roundId": "2004#271",
+      "roundIndex": 271,
+      "time": "15:36",
+      "number": 6,
+      "animal": "ម្សាញ់",
+      "color": "blue",
+      "size": "small",
+      "parity": "even",
+      "timestamp": 1793709686104
+    },
+    {
+      "roundId": "2004#270",
+      "roundIndex": 270,
+      "time": "15:32",
+      "number": 8,
+      "animal": "មមែ",
+      "color": "green",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793709626104
+    },
+    {
+      "roundId": "2004#269",
+      "roundIndex": 269,
+      "time": "15:28",
+      "number": 11,
+      "animal": "ច",
+      "color": "green",
+      "size": "big",
+      "parity": "odd",
+      "timestamp": 1793709566104
+    },
+    {
+      "roundId": "2004#268",
+      "roundIndex": 268,
+      "time": "15:25",
+      "number": 6,
+      "animal": "ម្សាញ់",
+      "color": "blue",
+      "size": "small",
+      "parity": "even",
+      "timestamp": 1793709506104
+    },
+    {
+      "roundId": "2004#267",
+      "roundIndex": 267,
+      "time": "15:21",
+      "number": 7,
+      "animal": "មមី",
+      "color": "red",
+      "size": "big",
+      "parity": "odd",
+      "timestamp": 1793709446104
+    },
+    {
+      "roundId": "2004#266",
+      "roundIndex": 266,
+      "time": "15:18",
+      "number": 5,
+      "animal": "រោង",
+      "color": "green",
+      "size": "small",
+      "parity": "odd",
+      "timestamp": 1793709386104
+    },
+    {
+      "roundId": "2004#265",
+      "roundIndex": 265,
+      "time": "15:14",
+      "number": 5,
+      "animal": "រោង",
+      "color": "green",
+      "size": "small",
+      "parity": "odd",
+      "timestamp": 1793709326104
+    },
+    {
+      "roundId": "2004#264",
+      "roundIndex": 264,
+      "time": "15:10",
+      "number": 1,
+      "animal": "ជូត",
+      "color": "red",
+      "size": "small",
+      "parity": "odd",
+      "timestamp": 1793709266104
+    },
+    {
+      "roundId": "2004#263",
+      "roundIndex": 263,
+      "time": "15:06",
+      "number": 6,
+      "animal": "ម្សាញ់",
+      "color": "blue",
+      "size": "small",
+      "parity": "even",
+      "timestamp": 1793709206104
+    },
+    {
+      "roundId": "2004#262",
+      "roundIndex": 262,
+      "time": "15:02",
+      "number": 10,
+      "animal": "រកា",
+      "color": "red",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793709146104
+    },
+    {
+      "roundId": "2004#261",
+      "roundIndex": 261,
+      "time": "14:58",
+      "number": 7,
+      "animal": "មមី",
+      "color": "red",
+      "size": "big",
+      "parity": "odd",
+      "timestamp": 1793709086104
+    },
+    {
+      "roundId": "2004#260",
+      "roundIndex": 260,
+      "time": "14:54",
+      "number": 1,
+      "animal": "ជូត",
+      "color": "red",
+      "size": "small",
+      "parity": "odd",
+      "timestamp": 1793709026104
+    },
+    {
+      "roundId": "2004#259",
+      "roundIndex": 259,
+      "time": "14:50",
+      "number": 12,
+      "animal": "កុរ",
+      "color": "blue",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793708966104
+    },
+    {
+      "roundId": "2004#258",
+      "roundIndex": 258,
+      "time": "14:46",
+      "number": 2,
+      "animal": "ឆ្លូវ",
+      "color": "green",
+      "size": "small",
+      "parity": "even",
+      "timestamp": 1793708906104
+    },
+    {
+      "roundId": "2004#257",
+      "roundIndex": 257,
+      "time": "14:42",
+      "number": 12,
+      "animal": "កុរ",
+      "color": "blue",
+      "size": "big",
+      "parity": "even",
+      "timestamp": 1793708846104
+    }
+  ],
+  "recentBets": [
+    {
+      "id": "test-bet-1",
+      "roundId": "2004#284",
+      "time": "16:22",
+      "bets": [
+        {
+          "type": "single",
+          "label": "លេខ 7 (មមី)",
+          "amount": 10000,
+          "odds": 11,
+          "won": false,
+          "payout": 0
+        }
+      ],
+      "totalStake": 10000,
+      "totalPotentialPayout": 110000,
+      "totalPayout": 0,
+      "netProfit": -10000,
+      "status": "pending"
+    },
+    {
+      "id": "bet_1793710490382_5svnk",
+      "roundId": "2004#284",
+      "time": "19:54:50",
+      "bets": [
+        {
+          "type": "big",
+          "label": "ធំ (Big)",
+          "amount": 12000,
+          "odds": 1.95,
+          "potentialWin": 23400,
+          "won": false,
+          "payout": 0
+        }
+      ],
+      "totalStake": 12000,
+      "totalPotentialPayout": 23400,
+      "totalPayout": 0,
+      "netProfit": -12000,
+      "status": "pending"
+    },
+    {
+      "id": "bet_1793710487386_k2sko",
+      "roundId": "2004#284",
+      "time": "19:54:47",
+      "bets": [
+        {
+          "type": "small",
+          "label": "តូច (Small)",
+          "amount": 12000,
+          "odds": 1.95,
+          "potentialWin": 23400,
+          "won": false,
+          "payout": 0
+        }
+      ],
+      "totalStake": 12000,
+      "totalPotentialPayout": 23400,
+      "totalPayout": 0,
+      "netProfit": -12000,
+      "status": "pending"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "tx-1001",
+      "userName": "អតិថិជន Player #1",
+      "userPhone": "012 888 999",
+      "type": "deposit",
+      "amount": 500000,
+      "method": "ABA Bank",
+      "status": "approved",
+      "timestamp": 1793706866105,
+      "timeString": "15:20",
+      "note": "ABA PayWay Deposit"
+    },
+    {
+      "id": "tx-1002",
+      "userName": "អតិថិជន Player #2",
+      "userPhone": "098 777 666",
+      "type": "withdrawal",
+      "amount": 200000,
+      "method": "Wing",
+      "status": "pending",
+      "timestamp": 1793708666105,
+      "timeString": "15:55",
+      "note": "ដកប្រាក់ឈ្នះជុំ 2004#280"
+    },
+    {
+      "id": "tx-1003",
+      "userName": "អតិថិជន Player #3",
+      "userPhone": "077 111 222",
+      "type": "deposit",
+      "amount": 300000,
+      "method": "ACLEDA",
+      "status": "pending",
+      "timestamp": 1793709566105,
+      "timeString": "16:10",
+      "note": "ACLEDA Mobile Top-up"
+    },
+    {
+      "id": "tx-1004",
+      "userName": "អតិថិជន Player #1",
+      "userPhone": "012 888 999",
+      "type": "deposit",
+      "amount": 100000,
+      "method": "TrueMoney",
+      "status": "approved",
+      "timestamp": 1793709866105,
+      "timeString": "16:15",
+      "note": "TrueMoney Deposit"
+    }
+  ],
+  "balance": 466000,
+  "forcedWinningNumber": null,
+  "savedAt": 1793710536928
+}

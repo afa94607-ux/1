@@ -181,7 +181,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ history, onBackToGame 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredHistory.map((item) => {
+              {filteredHistory.map((item, idx) => {
                 const animal = ANIMALS_DATA[item.number];
                 const isBig = item.size === 'big';
                 const isOdd = item.parity === 'odd';
@@ -193,7 +193,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ history, onBackToGame 
                     : 'bg-blue-600 text-white';
 
                 return (
-                  <tr key={item.roundId} className="hover:bg-slate-50 transition-colors">
+                  <tr key={`${item.roundId}-${item.timestamp || idx}`} className="hover:bg-slate-50 transition-colors">
                     <td className="py-2.5 px-3 font-bold text-blue-700">{item.roundId}</td>
                     <td className="py-2.5 px-3 text-slate-500">{item.time}</td>
                     <td className="py-2.5 px-3">

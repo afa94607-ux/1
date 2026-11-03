@@ -773,8 +773,8 @@ export const Lottery199: React.FC<Lottery199Props> = ({
 
         {/* Results List */}
         <div className="flex-1 divide-y divide-slate-100 overflow-y-auto bg-white p-1">
-          {history.map((item) => (
-            <div key={item.roundId} className="p-2 hover:bg-slate-50 transition-colors">
+          {history.map((item, idx) => (
+            <div key={`${item.roundId}-${item.timestamp || idx}`} className="p-2 hover:bg-slate-50 transition-colors">
               {/* Round number and time */}
               <div className="flex justify-between items-center text-slate-500 text-[11px] mb-1 font-mono">
                 <span className="font-bold text-slate-800">{item.roundId}</span>

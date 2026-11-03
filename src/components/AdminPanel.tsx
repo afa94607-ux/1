@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { auth, signInWithGoogle, signOutUser, updateFirestoreGameState, addFirestoreDrawResult } from '../lib/firebase';
 import {
   Shield,
   Trophy,
@@ -84,6 +86,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Navigation tabs
   const [selectedGame, setSelectedGame] = useState<AdminGameTab>('lottery_12');
   const [activeSection, setActiveSection] = useState<AdminSectionTab>('result_control');
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setFirebaseUser(u));
+    return () => unsub();
+  }, []);
 
   // Manual Result Form State
   const [manualRoundNumber, setManualRoundNumber] = useState<number>(currentRoundIndex + 1);
@@ -258,11 +266,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Handlers
   const handleSetForcedNumber = (num: number) => {
     sound.playChip();
-    if (forcedWinningNumber === num) {
-      onSetForcedWinningNumber(null);
-    } else {
-      onSetForcedWinningNumber(num);
-    }
+    const nextVal = forcedWinningNumber === num ? null : num;
+    onSetForcedWinningNumber(nextVal);
+    updateFirestoreGameState({ forcedWinningNumber: nextVal });
   };
 
   const handleForceDrawNow = (num?: number) => {
@@ -270,6 +276,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const target = num ?? forcedWinningNumber ?? manualSelectedAnimalNum;
     onTriggerImmediateDraw(target);
     onSetForcedWinningNumber(target);
+    updateFirestoreGameState({
+      isRevealing: true,
+      revealStep: 1,
+      forcedWinningNumber: target,
+    });
   };
 
   const handleCreateManualResult = (e: React.FormEvent) => {
@@ -290,6 +301,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     };
 
     onAddManualResult(newResult);
+    addFirestoreDrawResult(newResult);
     setResultSuccessMsg(`✅ បានបញ្ចូលលទ្ធផលជោគជ័យ: ជុំ ${newResult.roundId} = លេខ ${newResult.number} (${newResult.animal})`);
     setTimeout(() => setResultSuccessMsg(null), 4000);
     setManualRoundNumber((prev) => prev + 1);
@@ -398,6 +410,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <span>សមតុល្យអ្នកលេង:</span>
             <span className="font-mono text-emerald-400 font-bold">{playerBalance.toLocaleString()}៛</span>
           </div>
+
+          <div className="h-4 w-px bg-slate-700" />
+          {firebaseUser ? (
+            <div className="flex items-center gap-2 bg-purple-950/80 border border-purple-500/50 px-2.5 py-1 rounded-lg text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="font-mono text-yellow-300 font-bold text-[11px] truncate max-w-[130px] sm:max-w-none">
+                {firebaseUser.email}
+              </span>
+              <button
+                onClick={() => signOutUser()}
+                className="text-slate-400 hover:text-red-400 text-[10px] underline ml-1 cursor-pointer"
+                title="ចាកចេញ (Sign Out)"
+              >
+                ចាកចេញ
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => signInWithGoogle()}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg shadow-sm border border-slate-300 active:scale-95 transition-all cursor-pointer"
+              title="ចូលគណនី Admin ដោយ Google Sign-In"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>ចូល Admin (Google)</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -936,8 +979,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
-                        {filteredHistory.map((item) => (
-                          <tr key={item.roundId} className="hover:bg-slate-800/60 transition-colors">
+                        {filteredHistory.map((item, idx) => (
+                          <tr key={`${item.roundId}-${item.timestamp || idx}`} className="hover:bg-slate-800/60 transition-colors">
                             <td className="py-2 px-3 font-mono font-bold text-yellow-400">
                               {item.roundId}
                             </td>
@@ -1275,7 +1318,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           const estHouseProfit = estTurnover - estPayout;
 
                           return (
-                            <tr key={h.roundId} className="hover:bg-slate-800/60 transition-colors">
+                            <tr key={`${h.roundId}-${h.timestamp || idx}`} className="hover:bg-slate-800/60 transition-colors">
                               <td className="py-2.5 px-3 font-mono font-bold text-yellow-400">
                                 {h.roundId}
                               </td>

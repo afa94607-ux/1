@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "GameState": {
+      "title": "GameState",
+      "description": "Authoritative real-time game status, round clock, reveal sequence, and admin forced result overrides for Lottery 12",
+      "type": "object",
+      "properties": {
+        "roundId": { "type": "string", "maxLength": 64 },
+        "roundIndex": { "type": "number" },
+        "countdown": { "type": "number" },
+        "isRevealing": { "type": "boolean" },
+        "revealStep": { "type": "number" },
+        "forcedWinningNumber": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["roundId", "roundIndex", "countdown", "isRevealing", "revealStep"]
+    },
+    "DrawResult": {
+      "title": "DrawResult",
+      "description": "Historical draw result record for past lottery rounds",
+      "type": "object",
+      "properties": {
+        "roundId": { "type": "string", "maxLength": 64 },
+        "roundIndex": { "type": "number" },
+        "number": { "type": "number" },
+        "animal": { "type": "string", "maxLength": 32 },
+        "color": { "type": "string", "maxLength": 16 },
+        "size": { "type": "string", "maxLength": 16 },
+        "parity": { "type": "string", "maxLength": 16 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["roundId", "roundIndex", "number", "animal", "color", "size", "parity"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile with balance, account role, and identification",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "balance": { "type": "number" },
+        "role": { "type": "string", "enum": ["admin", "player"] },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid", "email", "balance", "role"]
+    },
+    "BetRecord": {
+      "title": "BetRecord",
+      "description": "Betting slip submitted by players during active rounds",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "roundId": { "type": "string", "maxLength": 64 },
+        "totalStake": { "type": "number" },
+        "totalPayout": { "type": "number" },
+        "netProfit": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "won", "lost"] },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "userId", "roundId", "totalStake", "status"]
+    }
+  },
+  "firestore": {
+    "/game_state/{stateId}": {
+      "schema": "GameState",
+      "description": "Global authoritative game state document for synchronizing all client devices"
+    },
+    "/draw_history/{roundId}": {
+      "schema": "DrawResult",
+      "description": "Historical lottery results collection synchronized across all client and admin devices"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account documents containing persistent balance and authentication role"
+    },
+    "/bets/{betId}": {
+      "schema": "BetRecord",
+      "description": "Player betting records collection queryable by user and monitored in real-time by admins"
+    }
+  }
+}

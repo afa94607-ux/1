@@ -2,10 +2,22 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const DATA_DIR = path.resolve(__dirname, 'data');
+const PERSISTENCE_FILE = path.resolve(DATA_DIR, 'lottery_server_state.json');
+
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Failed to ensure data dir exists', e);
+}
 
 // Data Types
 type ColorGroup = 'red' | 'green' | 'blue';
@@ -197,6 +209,63 @@ class ServerGameState {
   ];
 
   drawTimeouts: NodeJS.Timeout[] = [];
+
+  constructor() {
+    this.loadStateFromDisk();
+  }
+
+  loadStateFromDisk() {
+    try {
+      if (fs.existsSync(PERSISTENCE_FILE)) {
+        const raw = fs.readFileSync(PERSISTENCE_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (parsed) {
+          if (typeof parsed.currentRoundIndex === 'number' && parsed.currentRoundIndex > 0) {
+            this.currentRoundIndex = parsed.currentRoundIndex;
+          }
+          if (typeof parsed.currentRoundTime === 'string') {
+            this.currentRoundTime = parsed.currentRoundTime;
+          }
+          if (Array.isArray(parsed.history) && parsed.history.length > 0) {
+            this.history = parsed.history;
+          }
+          if (Array.isArray(parsed.recentBets)) {
+            this.recentBets = parsed.recentBets;
+          }
+          if (Array.isArray(parsed.transactions) && parsed.transactions.length > 0) {
+            this.transactions = parsed.transactions;
+          }
+          if (typeof parsed.balance === 'number') {
+            this.balance = parsed.balance;
+          }
+          if (parsed.forcedWinningNumber !== undefined) {
+            this.forcedWinningNumber = parsed.forcedWinningNumber;
+          }
+          console.log(`[Disk Persistence] Loaded game state. Round: 2004#${this.currentRoundIndex}, History count: ${this.history.length}, Total betting records: ${this.recentBets.length}, Balance: ${this.balance}៛`);
+        }
+      }
+    } catch (e) {
+      console.warn('[Disk Persistence] Failed to load state from disk', e);
+    }
+  }
+
+  saveStateToDisk() {
+    try {
+      const dataToSave = {
+        currentRoundIndex: this.currentRoundIndex,
+        currentRoundTime: this.currentRoundTime,
+        history: this.history,
+        recentBets: this.recentBets,
+        transactions: this.transactions,
+        balance: this.balance,
+        forcedWinningNumber: this.forcedWinningNumber,
+        savedAt: Date.now(),
+      };
+      fs.writeFileSync(PERSISTENCE_FILE, JSON.stringify(dataToSave, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('[Disk Persistence] Error writing state to disk', e);
+    }
+  }
 
   getStatePayload() {
     return {
@@ -397,6 +466,7 @@ function executeDrawSequence(explicitTarget?: number) {
 
     // Update history
     gameState.history = [outcomeResult, ...gameState.history];
+    gameState.saveStateToDisk();
 
     broadcast({
       type: 'DRAW_FINISHED',
@@ -415,6 +485,7 @@ function executeDrawSequence(explicitTarget?: number) {
       gameState.countdown = 180;
       gameState.currentRoundIndex += 1;
       gameState.drawMix = generateRandomMix();
+      gameState.saveStateToDisk();
 
       broadcast({
         type: 'ROUND_RESET',
@@ -537,6 +608,7 @@ app.get('/api/state', (req, res) => {
 app.post('/api/admin/set-result', (req, res) => {
   const { number } = req.body;
   gameState.forcedWinningNumber = typeof number === 'number' && number >= 1 && number <= 12 ? number : null;
+  gameState.saveStateToDisk();
   
   broadcast({
     type: 'FORCED_RESULT_UPDATED',
@@ -567,6 +639,7 @@ app.post('/api/admin/manual-result', (req, res) => {
   }
 
   gameState.history = [result, ...gameState.history];
+  gameState.saveStateToDisk();
   broadcast({
     type: 'HISTORY_UPDATED',
     history: gameState.history,
@@ -579,6 +652,7 @@ app.post('/api/admin/manual-result', (req, res) => {
 app.delete('/api/admin/result/:roundId', (req, res) => {
   const { roundId } = req.params;
   gameState.history = gameState.history.filter((h) => h.roundId !== roundId);
+  gameState.saveStateToDisk();
 
   broadcast({
     type: 'HISTORY_UPDATED',
@@ -605,6 +679,7 @@ app.post('/api/bet', (req, res) => {
 
   gameState.balance -= betRecord.totalStake;
   gameState.recentBets = [betRecord, ...gameState.recentBets];
+  gameState.saveStateToDisk();
 
   broadcast({
     type: 'BET_PLACED',
@@ -651,6 +726,7 @@ app.post('/api/transaction', (req, res) => {
   }
 
   gameState.transactions = [newTx, ...gameState.transactions];
+  gameState.saveStateToDisk();
 
   broadcast({
     type: 'TRANSACTION_UPDATED',
@@ -686,6 +762,8 @@ app.post('/api/transaction/:id/status', (req, res) => {
     }
   }
 
+  gameState.saveStateToDisk();
+
   broadcast({
     type: 'TRANSACTION_UPDATED',
     transactions: gameState.transactions,
@@ -700,6 +778,7 @@ app.post('/api/wallet/balance', (req, res) => {
   const { balance } = req.body;
   if (typeof balance === 'number') {
     gameState.balance = balance;
+    gameState.saveStateToDisk();
     broadcast({
       type: 'BALANCE_UPDATED',
       newBalance: gameState.balance,
