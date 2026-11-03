@@ -15,6 +15,7 @@ import { HelpRulesModal } from './components/HelpRulesModal';
 import { BetAmountModal } from './components/BetAmountModal';
 import { sound } from './utils/sound';
 import { countdownAudioSync, CountdownSyncSegment } from './utils/countdownAudioSync';
+import { realtimeSync, ConnectionStatus } from './utils/realtimeSync';
 import {
   ANIMALS_DATA,
   DrawResult,
@@ -74,6 +75,9 @@ export default function App() {
   // Navigation State
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('lottery_12');
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('lottery');
+  const [mobileView, setMobileView] = useState<'game' | 'sidebar'>('game');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const lastServerTickRef = useRef<number>(Date.now());
 
   // Account & Wallet State
   const [balance, setBalance] = useState<number>(500000); // 500,000 KHR initial
@@ -160,6 +164,11 @@ export default function App() {
     }
   }, [transactions]);
 
+  const handleSetForcedWinningNumber = (num: number | null) => {
+    setForcedWinningNumber(num);
+    realtimeSync.setForcedResult(num);
+  };
+
   const handleAddTransaction = (newTx: Omit<TransactionRecord, 'id' | 'timestamp' | 'timeString'>) => {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -170,33 +179,98 @@ export default function App() {
       timeString: timeStr,
     };
     setTransactions((prev) => [record, ...prev]);
+    realtimeSync.createTransaction(newTx);
   };
 
   const handleUpdateTransactionStatus = (id: string, status: TransactionStatus) => {
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status } : t))
     );
+    realtimeSync.updateTransactionStatus(id, status);
   };
 
   const handleAddManualResult = (result: DrawResult) => {
     setHistory((prev) => [result, ...prev]);
+    realtimeSync.addManualResult(result);
   };
 
   const handleDeleteResult = (roundId: string) => {
     setHistory((prev) => prev.filter((r) => r.roundId !== roundId));
+    realtimeSync.deleteResult(roundId);
   };
 
   const handleTriggerImmediateDraw = (targetNum?: number) => {
     if (targetNum && targetNum >= 1 && targetNum <= 12) {
       setForcedWinningNumber(targetNum);
     }
-    clearAllDrawTimeouts();
-    countdownAudioSync.stop();
-    setIsAudioSyncing(false);
-    setAudioSyncSegment(null);
-    setCountdown(0);
-    startDrawSequence(true);
+    realtimeSync.forceDrawNow(targetNum ?? forcedWinningNumber ?? undefined);
   };
+
+  // Real-time cross-device synchronization hook
+  useEffect(() => {
+    realtimeSync.connect();
+    realtimeSync.fetchInitialState();
+
+    const unsubStatus = realtimeSync.subscribeStatus((st) => setConnectionStatus(st));
+
+    const unsubscribe = realtimeSync.subscribe((stateUpdate, eventType) => {
+      lastServerTickRef.current = Date.now();
+
+      if (stateUpdate.countdown !== undefined) setCountdown(stateUpdate.countdown);
+      if (stateUpdate.currentRoundIndex !== undefined) setCurrentRoundIndex(stateUpdate.currentRoundIndex);
+      if (stateUpdate.currentRoundTime !== undefined) setCurrentRoundTime(stateUpdate.currentRoundTime);
+      if (stateUpdate.isRevealing !== undefined) setIsRevealing(stateUpdate.isRevealing);
+      if (stateUpdate.revealStep !== undefined) {
+        setRevealStep(stateUpdate.revealStep);
+        if (stateUpdate.revealStep >= 1 && stateUpdate.revealStep <= 11) {
+          sound.playCardFlip(stateUpdate.revealStep);
+        } else if (stateUpdate.revealStep === 12) {
+          sound.playGongReveal();
+        }
+      }
+      if (stateUpdate.drawMix !== undefined) setDrawMix(stateUpdate.drawMix);
+      if (stateUpdate.forcedWinningNumber !== undefined) setForcedWinningNumber(stateUpdate.forcedWinningNumber);
+      if (stateUpdate.pendingWinningResult !== undefined) setPendingWinningResult(stateUpdate.pendingWinningResult);
+      if (stateUpdate.history !== undefined) setHistory(stateUpdate.history);
+      if (stateUpdate.balance !== undefined) setBalance(stateUpdate.balance);
+      if (stateUpdate.recentBets !== undefined) setRecentBetRecords(stateUpdate.recentBets);
+      if (stateUpdate.transactions !== undefined) setTransactions(stateUpdate.transactions);
+
+      if (eventType === 'COUNTDOWN_10S_START') {
+        start10sCountdown();
+      }
+
+      if (eventType === 'DRAW_STARTED') {
+        countdownAudioSync.stop();
+        setIsAudioSyncing(false);
+        setAudioSyncSegment(null);
+        sound.playBowlShake();
+      }
+
+      if (eventType === 'DRAW_FINISHED') {
+        if (stateUpdate.pendingWinningResult) {
+          finalizeBets(stateUpdate.pendingWinningResult);
+        }
+      }
+
+      if (eventType === 'ROUND_RESET') {
+        countdownAudioSync.stop();
+        setIsAudioSyncing(false);
+        setAudioSyncSegment(null);
+        setIsRevealing(false);
+        setRevealStep(0);
+        setPendingWinningResult(null);
+        setWinNotice(null);
+        setConfirmedBets({});
+        setPendingBets({});
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubStatus();
+    };
+  }, []);
 
   // Helper to generate a completely randomized mix of numbers 1..12
   const generateRandomMix = (): number[] => {
@@ -257,7 +331,10 @@ export default function App() {
         // When audio finishes (after «សូមសំណាងល្អ» 0 / Draw), initiate draw sequence to reveal new result
         setIsAudioSyncing(false);
         setAudioSyncSegment(null);
-        startDrawSequence(true);
+        // If disconnected from backend, use local draw fallback
+        if (connectionStatus === 'disconnected') {
+          startDrawSequence(true);
+        }
       },
       sound.isMuted()
     );
@@ -322,25 +399,24 @@ export default function App() {
   // Active bets map displayed on the board
   const displayedBets = { ...confirmedBets, ...pendingBets };
 
-  // Countdown Loop (Every 3 minutes / 180 seconds)
+  // Fallback Countdown Loop (Only decrements locally if server tick hasn't arrived for >2.5s)
   useEffect(() => {
     if (isRevealing || isAudioSyncing) return;
 
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 11) {
-          // Exactly 10 seconds remaining -> Trigger audible countdown with Real-Time Sound & Figure Synchronization
-          start10sCountdown();
-          return 10;
-        }
-
-        // Periodic tick
-        if (prev % 10 === 0) {
-          sound.playTick();
-        }
-
-        return prev - 1;
-      });
+      const timeSinceLastServerTick = Date.now() - lastServerTickRef.current;
+      if (timeSinceLastServerTick > 2500) {
+        setCountdown((prev) => {
+          if (prev <= 11) {
+            start10sCountdown();
+            return 10;
+          }
+          if (prev % 10 === 0) {
+            sound.playTick();
+          }
+          return prev - 1;
+        });
+      }
     }, 1000);
 
     return () => clearInterval(timer);
@@ -608,6 +684,7 @@ export default function App() {
     };
 
     setRecentBetRecords((prev) => [newRecord, ...prev]);
+    realtimeSync.placeBet(newRecord);
   };
 
   // Clear betting history if requested
@@ -657,10 +734,11 @@ export default function App() {
         activeSubTab={activeSubTab}
         onSelectSubTab={setActiveSubTab}
         onOpenHelp={() => setIsHelpOpen(true)}
+        connectionStatus={connectionStatus}
       />
 
       {/* 2. Main Body Content */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* If user selected Admin Panel */}
         {activeMainTab === 'admin' ? (
           <AdminPanel
@@ -672,7 +750,7 @@ export default function App() {
             onAddManualResult={handleAddManualResult}
             onDeleteResult={handleDeleteResult}
             forcedWinningNumber={forcedWinningNumber}
-            onSetForcedWinningNumber={setForcedWinningNumber}
+            onSetForcedWinningNumber={handleSetForcedWinningNumber}
             onTriggerImmediateDraw={handleTriggerImmediateDraw}
             recentBets={recentBetRecords}
             playerBalance={balance}
@@ -704,62 +782,97 @@ export default function App() {
             onBackToGame={() => setActiveSubTab('lottery')}
           />
         ) : (
-          /* Main Cambodian 12 Lottery Board (Exact recreation of user screenshot) */
-          <>
-            {/* Left Sidebar (Balance, Latest Results, Recent Bets) */}
-            <Sidebar
-              balance={balance}
-              activeBetsTotal={confirmedBetsTotal + pendingBetsTotal}
-              latestResults={history}
-              recentBets={recentBetRecords}
-              onAddBalance={() => setIsTopUpOpen(true)}
-              onRefreshResults={() => sound.playButton()}
-              onClearBetsHistory={handleClearBetHistory}
-            />
+          /* Main Cambodian 12 Lottery Board (Responsive across all devices) */
+          <div className="flex-1 flex flex-col w-full overflow-hidden">
+            {/* Mobile View Switcher Tabs (Only visible on screens < lg) */}
+            <div className="lg:hidden bg-slate-900 border-b border-slate-700 px-3 py-2 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-1.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+                <button
+                  onClick={() => setMobileView('game')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${
+                    mobileView === 'game'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>🎲</span>
+                  <span>ផ្ទាំងឆ្នោត (Board)</span>
+                </button>
+                <button
+                  onClick={() => setMobileView('sidebar')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${
+                    mobileView === 'sidebar'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>📋</span>
+                  <span>គណនី / ប្រវត្តិ (Account)</span>
+                </button>
+              </div>
+              <div className="text-xs font-mono font-bold text-emerald-400 bg-black/40 px-2.5 py-1 rounded-md border border-emerald-500/30">
+                {balance.toLocaleString()}៛
+              </div>
+            </div>
 
-            {/* Right Main Playfield */}
-            <div className="flex-1 flex flex-col bg-white overflow-x-auto min-w-[760px]">
-              {/* Top Row: Center Bowls (Left) & Betting Odds + 12 Animals (Right) */}
-              <div className="flex flex-col md:flex-row border-b border-[#94a3b8]">
-                {/* 12 Bowls & Center Main Chamber */}
-                <BowlDrawArea
-                  countdown={countdown}
-                  isRevealing={isRevealing}
-                  revealStep={revealStep}
-                  latestResult={isRevealing ? pendingWinningResult : latestResult}
-                  drawMix={drawMix}
-                  onBowlClick={(num) =>
-                    handlePlaceBet(`animal_${num}` as BetCategory, 11, `ពានលេខ ${num}`)
-                  }
-                  onTriggerDraw={start10sCountdown}
-                  audioSyncSegment={audioSyncSegment}
-                  isBettingClosed={isBettingClosed}
-                  onTrigger10sCountdown={start10sCountdown}
-                  onBlockedAttempt={handleBlockedAttempt}
-                />
-
-                {/* Right Betting Board (Countdown block, odds buttons, 12 animal cards) */}
-                <BettingBoard
-                  countdown={countdown}
-                  currentRoundId={`2004#${currentRoundIndex}`}
-                  currentRoundTime={currentRoundTime}
-                  activeBets={displayedBets}
-                  onPlaceBet={handlePlaceBet}
-                  selectedChip={selectedChip}
-                  latestResult={isRevealing && revealStep >= 12 ? pendingWinningResult : latestResult}
-                  isRevealing={isRevealing && revealStep >= 12}
-                  revealStep={revealStep}
-                  onRefreshRound={start10sCountdown}
-                  audioSyncSegment={audioSyncSegment}
-                  isBettingClosed={isBettingClosed}
-                  onBlockedAttempt={handleBlockedAttempt}
+            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto overflow-x-hidden">
+              {/* Left Sidebar (Balance, Latest Results, Recent Bets) */}
+              <div className={`${mobileView === 'sidebar' ? 'block' : 'hidden'} lg:block shrink-0`}>
+                <Sidebar
+                  balance={balance}
+                  activeBetsTotal={confirmedBetsTotal + pendingBetsTotal}
+                  latestResults={history}
+                  recentBets={recentBetRecords}
+                  onAddBalance={() => setIsTopUpOpen(true)}
+                  onRefreshResults={() => sound.playButton()}
+                  onClearBetsHistory={handleClearBetHistory}
                 />
               </div>
 
-              {/* Bottom Row: Streak Roads & Bead Plate (លេខ / តូចធំ & ពណ៌ / សេសគូ) */}
-              <RoadGrid history={history} />
+              {/* Right Main Playfield */}
+              <div className={`${mobileView === 'game' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col bg-white overflow-x-auto min-w-0 w-full`}>
+                {/* Top Row: Center Bowls (Left) & Betting Odds + 12 Animals (Right) */}
+                <div className="flex flex-col md:flex-row border-b border-[#94a3b8]">
+                  {/* 12 Bowls & Center Main Chamber */}
+                  <BowlDrawArea
+                    countdown={countdown}
+                    isRevealing={isRevealing}
+                    revealStep={revealStep}
+                    latestResult={isRevealing ? pendingWinningResult : latestResult}
+                    drawMix={drawMix}
+                    onBowlClick={(num) =>
+                      handlePlaceBet(`animal_${num}` as BetCategory, 11, `ពានលេខ ${num}`)
+                    }
+                    onTriggerDraw={start10sCountdown}
+                    audioSyncSegment={audioSyncSegment}
+                    isBettingClosed={isBettingClosed}
+                    onTrigger10sCountdown={start10sCountdown}
+                    onBlockedAttempt={handleBlockedAttempt}
+                  />
+
+                  {/* Right Betting Board (Countdown block, odds buttons, 12 animal cards) */}
+                  <BettingBoard
+                    countdown={countdown}
+                    currentRoundId={`2004#${currentRoundIndex}`}
+                    currentRoundTime={currentRoundTime}
+                    activeBets={displayedBets}
+                    onPlaceBet={handlePlaceBet}
+                    selectedChip={selectedChip}
+                    latestResult={isRevealing && revealStep >= 12 ? pendingWinningResult : latestResult}
+                    isRevealing={isRevealing && revealStep >= 12}
+                    revealStep={revealStep}
+                    onRefreshRound={start10sCountdown}
+                    audioSyncSegment={audioSyncSegment}
+                    isBettingClosed={isBettingClosed}
+                    onBlockedAttempt={handleBlockedAttempt}
+                  />
+                </div>
+
+                {/* Bottom Row: Streak Roads & Bead Plate (លេខ / តូចធំ & ពណ៌ / សេសគូ) */}
+                <RoadGrid history={history} />
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 

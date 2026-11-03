@@ -25,6 +25,7 @@ interface HeaderNavProps {
   activeSubTab: SubTab;
   onSelectSubTab: (tab: SubTab) => void;
   onOpenHelp?: () => void;
+  connectionStatus?: 'connected' | 'connecting' | 'fallback_polling' | 'disconnected';
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -33,6 +34,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   activeSubTab,
   onSelectSubTab,
   onOpenHelp,
+  connectionStatus = 'connected',
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.isMuted());
 
@@ -146,10 +148,24 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           </button>
         </div>
 
-        {/* Live system state tag */}
-        <div className="text-[11px] text-white/90 font-normal flex items-center gap-1.5 hidden sm:flex">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span>ផ្សាយផ្ទាល់ ២៤/៧</span>
+        {/* Live system state tag & cross-device status */}
+        <div className="text-[11px] text-white/95 font-medium flex items-center gap-2">
+          {connectionStatus === 'connected' ? (
+            <span className="flex items-center gap-1.5 bg-black/30 backdrop-blur-xs px-2.5 py-0.5 rounded-full border border-green-400/40">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-ping" />
+              <span className="text-green-300 font-bold">🟢 ភ្ជាប់ផ្ទាល់គ្រប់ឧបករណ៍ (Live Sync)</span>
+            </span>
+          ) : connectionStatus === 'fallback_polling' ? (
+            <span className="flex items-center gap-1.5 bg-black/30 px-2.5 py-0.5 rounded-full border border-amber-400/40">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-amber-200 font-bold">🟡 Auto-Sync (Fallback)</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 bg-black/30 px-2 py-0.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />
+              <span className="text-slate-300">កំពុងភ្ជាប់...</span>
+            </span>
+          )}
         </div>
       </div>
     </header>
