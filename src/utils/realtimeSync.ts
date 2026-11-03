@@ -148,7 +148,7 @@ class RealtimeSyncService {
     }, 2500);
   }
 
-  // Fallback Polling ensures zero data loss even on restrictive proxies that drop WebSocket connections
+  // Fallback Polling ensures zero data loss even on Cloudflare proxies that block or throttle WebSocket connections
   private startFallbackPoller() {
     if (this.fallbackPollerTimer) return;
     this.fallbackPollerTimer = setInterval(async () => {
@@ -157,7 +157,7 @@ class RealtimeSyncService {
         return;
       }
       await this.fetchInitialState();
-    }, 1500);
+    }, 1000);
   }
 
   private stopFallbackPoller() {

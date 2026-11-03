@@ -13,6 +13,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { TopUpModal } from './components/TopUpModal';
 import { HelpRulesModal } from './components/HelpRulesModal';
 import { BetAmountModal } from './components/BetAmountModal';
+import { HowItWorksModal } from './components/HowItWorksModal';
 import { sound } from './utils/sound';
 import { countdownAudioSync, CountdownSyncSegment } from './utils/countdownAudioSync';
 import { realtimeSync, ConnectionStatus } from './utils/realtimeSync';
@@ -75,8 +76,9 @@ export default function App() {
   // Navigation State
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('lottery_12');
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('lottery');
-  const [mobileView, setMobileView] = useState<'game' | 'sidebar'>('game');
+  const [mobileView, setMobileView] = useState<'full' | 'game' | 'sidebar'>('full');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const [isHowItWorksOpen, setIsHowItWorksOpen] = useState<boolean>(false);
   const lastServerTickRef = useRef<number>(Date.now());
 
   // Account & Wallet State
@@ -734,6 +736,7 @@ export default function App() {
         activeSubTab={activeSubTab}
         onSelectSubTab={setActiveSubTab}
         onOpenHelp={() => setIsHelpOpen(true)}
+        onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
         connectionStatus={connectionStatus}
       />
 
@@ -759,6 +762,7 @@ export default function App() {
             onAddTransaction={handleAddTransaction}
             onUpdateTransactionStatus={handleUpdateTransactionStatus}
             onReturnToGame={() => setActiveMainTab('lottery_12')}
+            onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
           />
         ) : activeMainTab === 'lottery_1_99' ? (
           <Lottery199
@@ -782,32 +786,46 @@ export default function App() {
             onBackToGame={() => setActiveSubTab('lottery')}
           />
         ) : (
-          /* Main Cambodian 12 Lottery Board (Responsive across all devices) */
+          /* Main Cambodian 12 Lottery Board (Responsive & Consistent across all devices) */
           <div className="flex-1 flex flex-col w-full overflow-hidden">
             {/* Mobile View Switcher Tabs (Only visible on screens < lg) */}
-            <div className="lg:hidden bg-slate-900 border-b border-slate-700 px-3 py-2 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-1.5 bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+            <div className="lg:hidden bg-slate-900 border-b border-slate-700 px-2 sm:px-3 py-1.5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-[11px] font-bold">
+                <button
+                  onClick={() => setMobileView('full')}
+                  className={`px-2.5 py-1 rounded transition-all flex items-center gap-1 ${
+                    mobileView === 'full'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                  title="ប្លង់ពេញលេញដូចកុំព្យូទ័រ (Full Kiosk Layout)"
+                >
+                  <span>📱</span>
+                  <span>ប្លង់ពេញ (Full)</span>
+                </button>
                 <button
                   onClick={() => setMobileView('game')}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${
+                  className={`px-2.5 py-1 rounded transition-all flex items-center gap-1 ${
                     mobileView === 'game'
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
+                  title="មើលតែផ្ទាំងឆ្នោត (Board Only)"
                 >
                   <span>🎲</span>
-                  <span>ផ្ទាំងឆ្នោត (Board)</span>
+                  <span>ផ្ទាំងឆ្នោត</span>
                 </button>
                 <button
                   onClick={() => setMobileView('sidebar')}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${
+                  className={`px-2.5 py-1 rounded transition-all flex items-center gap-1 ${
                     mobileView === 'sidebar'
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
+                  title="មើលសមតុល្យ និងប្រវត្តិ (Account & History)"
                 >
                   <span>📋</span>
-                  <span>គណនី / ប្រវត្តិ (Account)</span>
+                  <span>គណនី</span>
                 </button>
               </div>
               <div className="text-xs font-mono font-bold text-emerald-400 bg-black/40 px-2.5 py-1 rounded-md border border-emerald-500/30">
@@ -815,24 +833,25 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto overflow-x-hidden">
-              {/* Left Sidebar (Balance, Latest Results, Recent Bets) */}
-              <div className={`${mobileView === 'sidebar' ? 'block' : 'hidden'} lg:block shrink-0`}>
-                <Sidebar
-                  balance={balance}
-                  activeBetsTotal={confirmedBetsTotal + pendingBetsTotal}
-                  latestResults={history}
-                  recentBets={recentBetRecords}
-                  onAddBalance={() => setIsTopUpOpen(true)}
-                  onRefreshResults={() => sound.playButton()}
-                  onClearBetsHistory={handleClearBetHistory}
-                />
-              </div>
+            <div className={`flex-1 flex flex-col lg:flex-row overflow-y-auto ${mobileView === 'full' ? 'overflow-x-auto' : 'overflow-x-hidden'}`}>
+              <div className={`flex flex-col lg:flex-row flex-1 ${mobileView === 'full' ? 'min-w-[980px] lg:min-w-0' : 'w-full'}`}>
+                {/* Left Sidebar (Balance, Latest Results, Recent Bets) */}
+                <div className={`${mobileView === 'full' || mobileView === 'sidebar' ? 'block' : 'hidden'} lg:block shrink-0`}>
+                  <Sidebar
+                    balance={balance}
+                    activeBetsTotal={confirmedBetsTotal + pendingBetsTotal}
+                    latestResults={history}
+                    recentBets={recentBetRecords}
+                    onAddBalance={() => setIsTopUpOpen(true)}
+                    onRefreshResults={() => sound.playButton()}
+                    onClearBetsHistory={handleClearBetHistory}
+                  />
+                </div>
 
-              {/* Right Main Playfield */}
-              <div className={`${mobileView === 'game' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col bg-white overflow-x-auto min-w-0 w-full`}>
-                {/* Top Row: Center Bowls (Left) & Betting Odds + 12 Animals (Right) */}
-                <div className="flex flex-col md:flex-row border-b border-[#94a3b8]">
+                {/* Right Main Playfield */}
+                <div className={`${mobileView === 'full' || mobileView === 'game' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col bg-white overflow-x-auto min-w-0 w-full`}>
+                  {/* Top Row: Center Bowls (Left) & Betting Odds + 12 Animals (Right) */}
+                  <div className="flex flex-col md:flex-row border-b border-[#94a3b8]">
                   {/* 12 Bowls & Center Main Chamber */}
                   <BowlDrawArea
                     countdown={countdown}
@@ -873,8 +892,9 @@ export default function App() {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       {/* Floating Bet Blocked Warning Toast */}
       {betBlockedNotice && (
@@ -927,6 +947,12 @@ export default function App() {
         balance={balance}
         onOpenTopUp={() => setIsTopUpOpen(true)}
         isBettingClosed={isBettingClosed}
+      />
+
+      {/* Cloudflare Remote Management & How It Works Modal */}
+      <HowItWorksModal
+        isOpen={isHowItWorksOpen}
+        onClose={() => setIsHowItWorksOpen(false)}
       />
     </div>
   );

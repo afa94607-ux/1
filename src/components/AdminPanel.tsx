@@ -55,6 +55,7 @@ interface AdminPanelProps {
   onAddTransaction: (tx: Omit<TransactionRecord, 'id' | 'timestamp' | 'timeString'>) => void;
   onUpdateTransactionStatus: (id: string, status: TransactionStatus) => void;
   onReturnToGame: () => void;
+  onOpenHowItWorks?: () => void;
 }
 
 type AdminGameTab = 'lottery_12' | 'lottery_1_99';
@@ -78,6 +79,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onAddTransaction,
   onUpdateTransactionStatus,
   onReturnToGame,
+  onOpenHowItWorks,
 }) => {
   // Navigation tabs
   const [selectedGame, setSelectedGame] = useState<AdminGameTab>('lottery_12');
@@ -346,6 +348,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <ArrowLeft className="w-4 h-4" />
             <span>ត្រឡប់ទៅផ្ទាំងហ្គេម</span>
           </button>
+
+          {onOpenHowItWorks && (
+            <button
+              onClick={onOpenHowItWorks}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 text-xs sm:text-sm font-black rounded-lg border border-amber-600 shadow-xs transition-all"
+              title="របៀបបញ្ជាពីចម្ងាយតាម Cloudflare"
+            >
+              <span>📖</span>
+              <span>របៀបបញ្ជាពីចម្ងាយ</span>
+            </button>
+          )}
 
           <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center shadow-inner border border-purple-400/50">

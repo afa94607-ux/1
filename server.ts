@@ -226,16 +226,25 @@ const gameState = new ServerGameState();
 
 // Express & WebSocket Server Setup
 const app = express();
-app.set('trust proxy', 1);
+app.set('trust proxy', true); // Full trust for Cloudflare proxy hops
 
-// Robust CORS Middleware for custom domains & reverse proxies
+// Robust CORS Middleware for custom domains & reverse proxies (Cloudflare, Nginx, GCP)
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, CF-Connecting-IP, CF-RAY');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
+  next();
+});
+
+// Cloudflare CDN Cache Disabling for API endpoints - ensures zero stale game state across edges
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
   next();
 });
 
@@ -281,7 +290,7 @@ wss.on('connection', (ws: ExtWebSocket) => {
   });
 });
 
-// Heartbeat ping interval to keep connection alive through Cloudflare, Nginx, or mobile cellular proxies
+// Heartbeat ping interval to keep connection alive through Cloudflare, Nginx, or mobile cellular proxies (15s < Cloudflare 100s timeout)
 const pingInterval = setInterval(() => {
   wss.clients.forEach((client) => {
     const ws = client as ExtWebSocket;
@@ -291,7 +300,7 @@ const pingInterval = setInterval(() => {
     ws.isAlive = false;
     ws.ping();
   });
-}, 25000);
+}, 15000);
 
 wss.on('close', () => {
   clearInterval(pingInterval);
@@ -504,6 +513,20 @@ setInterval(() => {
 // ========================================================
 // REST API ENDPOINTS FOR CROSS-DEVICE ACTIONS & FALLBACK
 // ========================================================
+
+// 0. Cloudflare & Health Diagnostics endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: Date.now(),
+    clientsConnected: wss.clients.size,
+    currentRoundIndex: gameState.currentRoundIndex,
+    countdown: gameState.countdown,
+    forcedWinningNumber: gameState.forcedWinningNumber,
+    cfRay: req.headers['cf-ray'] || null,
+    cfConnectingIp: req.headers['cf-connecting-ip'] || null,
+  });
+});
 
 // 1. Get complete current game state (used on initial page load / reconnection)
 app.get('/api/state', (req, res) => {

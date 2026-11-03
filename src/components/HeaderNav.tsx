@@ -25,6 +25,7 @@ interface HeaderNavProps {
   activeSubTab: SubTab;
   onSelectSubTab: (tab: SubTab) => void;
   onOpenHelp?: () => void;
+  onOpenHowItWorks?: () => void;
   connectionStatus?: 'connected' | 'connecting' | 'fallback_polling' | 'disconnected';
 }
 
@@ -34,6 +35,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   activeSubTab,
   onSelectSubTab,
   onOpenHelp,
+  onOpenHowItWorks,
   connectionStatus = 'connected',
 }) => {
   const [isMuted, setIsMuted] = React.useState(sound.isMuted());
@@ -82,6 +84,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
         {/* Right side utility icons */}
         <div className="ml-auto flex items-center gap-2 pl-3">
+          {onOpenHowItWorks && (
+            <button
+              onClick={onOpenHowItWorks}
+              className="flex items-center gap-1 px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 text-xs font-black shadow-xs transition-all border border-amber-600"
+              title="របៀបដំណើរការ & បញ្ជាពីចម្ងាយ Cloudflare"
+            >
+              <span>📖</span>
+              <span className="hidden sm:inline">របៀបដំណើរការ</span>
+            </button>
+          )}
+
           <button
             onClick={handleToggleSound}
             className="p-1 rounded text-slate-700 hover:text-blue-700 hover:bg-slate-300 transition-colors"
