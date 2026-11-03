@@ -9,6 +9,7 @@ import { WinLossView } from './components/WinLossView';
 import { ResultsView } from './components/ResultsView';
 import { OtherGamesView } from './components/OtherGamesView';
 import { Lottery199 } from './components/Lottery199';
+import { AdminPanel } from './components/AdminPanel';
 import { TopUpModal } from './components/TopUpModal';
 import { HelpRulesModal } from './components/HelpRulesModal';
 import { BetAmountModal } from './components/BetAmountModal';
@@ -19,6 +20,8 @@ import {
   DrawResult,
   BetCategory,
   BetHistoryRecord,
+  TransactionRecord,
+  TransactionStatus,
 } from './types';
 
 // Preloaded historical results replicating the exact image data and streak roads from image_9d92c28c.png
@@ -84,6 +87,137 @@ export default function App() {
   const [isRevealing, setIsRevealing] = useState<boolean>(false);
   const [revealStep, setRevealStep] = useState<number>(0); // 0: closed, 1..6: row 1, 7..11: row 2, 12: row 3 final result
   const [pendingWinningResult, setPendingWinningResult] = useState<DrawResult | null>(null);
+  
+  // Admin Panel Control States
+  const [forcedWinningNumber, setForcedWinningNumber] = useState<number | null>(null);
+
+  // Transactions State (Deposits & Withdrawals)
+  const TRANSACTION_STORAGE_KEY = 'cambodia_lottery_transactions_v2';
+  const [transactions, setTransactions] = useState<TransactionRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(TRANSACTION_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse transactions', e);
+    }
+    return [
+      {
+        id: 'tx-1001',
+        userName: 'អតិថិជន Player #1',
+        userPhone: '012 888 999',
+        type: 'deposit',
+        amount: 500000,
+        method: 'ABA Bank',
+        status: 'approved',
+        timestamp: Date.now() - 3600000,
+        timeString: '15:20',
+        note: 'ABA PayWay Deposit',
+      },
+      {
+        id: 'tx-1002',
+        userName: 'អតិថិជន Player #2',
+        userPhone: '098 777 666',
+        type: 'withdrawal',
+        amount: 200000,
+        method: 'Wing',
+        status: 'pending',
+        timestamp: Date.now() - 1800000,
+        timeString: '15:55',
+        note: 'ដកប្រាក់ឈ្នះជុំ 2004#280',
+      },
+      {
+        id: 'tx-1003',
+        userName: 'អតិថិជន Player #3',
+        userPhone: '077 111 222',
+        type: 'deposit',
+        amount: 300000,
+        method: 'ACLEDA',
+        status: 'pending',
+        timestamp: Date.now() - 900000,
+        timeString: '16:10',
+        note: 'ACLEDA Mobile Top-up',
+      },
+      {
+        id: 'tx-1004',
+        userName: 'អតិថិជន Player #1',
+        userPhone: '012 888 999',
+        type: 'deposit',
+        amount: 100000,
+        method: 'TrueMoney',
+        status: 'approved',
+        timestamp: Date.now() - 600000,
+        timeString: '16:15',
+        note: 'TrueMoney Deposit',
+      },
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TRANSACTION_STORAGE_KEY, JSON.stringify(transactions));
+    } catch (e) {
+      console.warn('Failed to save transactions', e);
+    }
+  }, [transactions]);
+
+  const handleAddTransaction = (newTx: Omit<TransactionRecord, 'id' | 'timestamp' | 'timeString'>) => {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const record: TransactionRecord = {
+      ...newTx,
+      id: `tx-${Date.now()}`,
+      timestamp: Date.now(),
+      timeString: timeStr,
+    };
+    setTransactions((prev) => [record, ...prev]);
+  };
+
+  const handleUpdateTransactionStatus = (id: string, status: TransactionStatus) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status } : t))
+    );
+  };
+
+  const handleAddManualResult = (result: DrawResult) => {
+    setHistory((prev) => [result, ...prev]);
+  };
+
+  const handleDeleteResult = (roundId: string) => {
+    setHistory((prev) => prev.filter((r) => r.roundId !== roundId));
+  };
+
+  const handleTriggerImmediateDraw = (targetNum?: number) => {
+    if (targetNum && targetNum >= 1 && targetNum <= 12) {
+      setForcedWinningNumber(targetNum);
+    }
+    clearAllDrawTimeouts();
+    countdownAudioSync.stop();
+    setIsAudioSyncing(false);
+    setAudioSyncSegment(null);
+    setCountdown(0);
+    startDrawSequence(true);
+  };
+
+  // Helper to generate a completely randomized mix of numbers 1..12
+  const generateRandomMix = (): number[] => {
+    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    for (let i = numbers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+    }
+    return numbers;
+  };
+
+  // Randomized mix of numbers for the round (shuffled 1..12)
+  const [drawMix, setDrawMix] = useState<number[]>(() => {
+    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    for (let i = numbers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+    }
+    return numbers;
+  });
+
   const drawTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Real-Time Sound & Figure Synchronization States (10s Countdown)
@@ -306,8 +440,23 @@ export default function App() {
     setIsAudioSyncing(false);
     setAudioSyncSegment(null);
 
-    // 1. Determine new winning result
-    const winningNum = Math.floor(Math.random() * 12) + 1;
+    // 1. Generate new randomized mix of numbers 1..12 (appears randomly and consists of a mix of numbers)
+    let winningNum: number;
+    let mix = generateRandomMix();
+    if (forcedWinningNumber && forcedWinningNumber >= 1 && forcedWinningNumber <= 12) {
+      winningNum = forcedWinningNumber;
+      // Put forcedWinningNumber at index 11 (the 12th bowl / final result)
+      const remaining = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((n) => n !== forcedWinningNumber);
+      for (let i = remaining.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+      }
+      mix = [...remaining, forcedWinningNumber];
+      setForcedWinningNumber(null);
+    } else {
+      winningNum = mix[11];
+    }
+    setDrawMix(mix);
     const animal = ANIMALS_DATA[winningNum];
 
     const now = new Date();
@@ -331,7 +480,7 @@ export default function App() {
     setCountdown(0);
     sound.playBowlShake();
 
-    // Row 1 (Numbers 1–6): Each number appears with an interval of 1,100 milliseconds (ms)
+    // Row 1 (Positions 1–6): Each number appears with an interval of 1,100 milliseconds (ms)
     // Step 1: Open Number 1 at t = 0ms
     setRevealStep(1);
     sound.playCardFlip(1);
@@ -346,7 +495,7 @@ export default function App() {
       drawTimeoutsRef.current.push(t);
     }
 
-    // Row 2 (Numbers 7–11): Each number appears with an interval of 1,100 milliseconds (ms)
+    // Row 2 (Positions 7–11): Each number appears with an interval of 1,100 milliseconds (ms)
     for (let s = 7; s <= 11; s++) {
       const delay = (s - 1) * 1100;
       const t = setTimeout(() => {
@@ -356,7 +505,7 @@ export default function App() {
       drawTimeoutsRef.current.push(t);
     }
 
-    // Row 3 (Final Result/Number 12): The final winning result appears 1,100 milliseconds (ms) after the last number of the second row
+    // Row 3 (Final Result/Position 12): The final winning result appears 1,100 milliseconds (ms) after the last number of the second row
     // Number 11 was at delay = 10 * 1100 = 11,000 ms.
     // Row 3 appears at delay = 11 * 1100 = 12,100 ms (exactly 1,100ms after Number 11).
     const finalResultDelay = 11 * 1100;
@@ -382,6 +531,7 @@ export default function App() {
         setWinNotice(null);
         setCountdown(180); // Reset for next 3-minute round
         setCurrentRoundIndex((prev) => prev + 1);
+        setDrawMix(generateRandomMix()); // Fresh randomized mix for the next round
 
         if (Object.keys(confirmedBets).length > 0) {
           setLastRoundBets(confirmedBets);
@@ -511,8 +661,28 @@ export default function App() {
 
       {/* 2. Main Body Content */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        {/* If user selected ឆ្នោត 1/99 */}
-        {activeMainTab === 'lottery_1_99' ? (
+        {/* If user selected Admin Panel */}
+        {activeMainTab === 'admin' ? (
+          <AdminPanel
+            currentRoundIndex={currentRoundIndex}
+            currentRoundTime={currentRoundTime}
+            countdown={countdown}
+            isRevealing={isRevealing}
+            history={history}
+            onAddManualResult={handleAddManualResult}
+            onDeleteResult={handleDeleteResult}
+            forcedWinningNumber={forcedWinningNumber}
+            onSetForcedWinningNumber={setForcedWinningNumber}
+            onTriggerImmediateDraw={handleTriggerImmediateDraw}
+            recentBets={recentBetRecords}
+            playerBalance={balance}
+            onUpdatePlayerBalance={setBalance}
+            transactions={transactions}
+            onAddTransaction={handleAddTransaction}
+            onUpdateTransactionStatus={handleUpdateTransactionStatus}
+            onReturnToGame={() => setActiveMainTab('lottery_12')}
+          />
+        ) : activeMainTab === 'lottery_1_99' ? (
           <Lottery199
             balance={balance}
             onUpdateBalance={setBalance}
@@ -557,6 +727,7 @@ export default function App() {
                   isRevealing={isRevealing}
                   revealStep={revealStep}
                   latestResult={isRevealing ? pendingWinningResult : latestResult}
+                  drawMix={drawMix}
                   onBowlClick={(num) =>
                     handlePlaceBet(`animal_${num}` as BetCategory, 11, `ពានលេខ ${num}`)
                   }

@@ -14,7 +14,8 @@ export type MainTab =
   | 'lottery_1_99'
   | 'report'
   | 'password'
-  | 'image_results';
+  | 'image_results'
+  | 'admin';
 
 export type SubTab = 'lottery' | 'win_loss' | 'results';
 
@@ -40,10 +41,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
     setIsMuted(muted);
   };
 
-  const mainTabs: { id: MainTab; label: string }[] = [
+  const mainTabs: { id: MainTab; label: string; isAdmin?: boolean }[] = [
     { id: 'lottery_12', label: 'ឆ្នោត 12' },
     { id: 'lottery_1_99', label: 'ឆ្នោត 1/99' },
     { id: 'report', label: 'របាយការណ៍សរុប' },
+    { id: 'admin', label: '🛡️ ផ្ទាំងគ្រប់គ្រង (Admin)', isAdmin: true },
   ];
 
   return (
@@ -62,7 +64,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 }}
                 className={`px-3 py-1.5 transition-all duration-150 rounded-t-sm whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#3b82f6] text-white font-bold shadow-xs'
+                    ? tab.isAdmin
+                      ? 'bg-purple-700 text-yellow-300 font-extrabold shadow-sm ring-1 ring-purple-400'
+                      : 'bg-[#3b82f6] text-white font-bold shadow-xs'
+                    : tab.isAdmin
+                    ? 'text-purple-900 bg-purple-100 hover:bg-purple-200 font-bold border border-purple-300/60'
                     : 'text-[#1e293b] hover:bg-slate-300 hover:text-blue-900'
                 }`}
               >

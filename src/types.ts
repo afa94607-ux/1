@@ -99,3 +99,44 @@ export interface Lottery199BetRecord {
   status: 'won' | 'lost' | 'pending';
   winningDetails?: { post: PostLetter; number: string; payout: number }[];
 }
+
+export type TransactionType = 'deposit' | 'withdrawal' | 'adjustment';
+export type TransactionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface TransactionRecord {
+  id: string;
+  userName: string;
+  userPhone: string;
+  type: TransactionType;
+  amount: number;
+  method: 'ABA Bank' | 'Wing' | 'ACLEDA' | 'TrueMoney' | 'Cash' | 'Manual';
+  status: TransactionStatus;
+  timestamp: number;
+  timeString: string;
+  note?: string;
+}
+
+export interface LiveBetItem {
+  id: string;
+  roundId: string;
+  userName: string;
+  time: string;
+  type: BetCategory;
+  label: string;
+  amount: number;
+  odds: number;
+  potentialPayout: number;
+  timestamp: number;
+}
+
+export interface RoundSummaryReport {
+  roundId: string;
+  time: string;
+  resultNumber: number;
+  animal: string;
+  totalTurnover: number;
+  totalPayout: number;
+  houseProfit: number;
+  status: 'completed' | 'in_progress';
+}
+
